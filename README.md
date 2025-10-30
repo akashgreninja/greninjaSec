@@ -1,8 +1,8 @@
-# 🧩 InfraGuardian — Kubernetes Security Scanner
+# � GreninjaSec — Kubernetes Security Scanner
 
 > **Current Status:** MVP with core scanning engine and Kubesec integration ✅
 
-A lightweight, offline security scanner for Kubernetes infrastructure. Detects misconfigurations, security vulnerabilities, and compliance issues in YAML manifests.
+A lightweight, offensive security scanner for Kubernetes infrastructure. Detects misconfigurations, security vulnerabilities, and compliance issues in YAML manifests.
 
 ---
 
@@ -10,13 +10,13 @@ A lightweight, offline security scanner for Kubernetes infrastructure. Detects m
 
 ```bash
 # Build the binary
-go build -o infraguardian
+go build -o greninjasec
 
 # Scan a directory
-./infraguardian --path examples/
+./greninjasec --path examples/
 
 # Output as JSON (for CI/CD)
-./infraguardian --path . --format json
+./greninjasec --path . --format json
 ```
 
 ---
@@ -93,17 +93,22 @@ Findings: 6
 ## 🏗️ **Architecture**
 
 ```
-infraguardian/
+greninjasec/
 ├── cmd/
 │   └── root.go          # CLI entry point (Cobra)
 ├── internal/
 │   ├── scanner/
-│   │   └── scanner.go   # Core scanning logic + Kubesec integration
+│   │   ├── scanner.go   # Core scanning logic + Kubesec integration
+│   │   ├── secrets.go   # Secrets detection engine
+│   │   ├── dockerfile.go # Dockerfile scanner (Hadolint)
+│   │   └── tools.go     # Auto-download manager
 │   └── rules/
 │       ├── default_rules.yaml  # Custom rule definitions
 │       └── rules.go     # Rule loading (in progress)
 ├── examples/
-│   └── bad_deployment.yaml  # Test YAML with vulnerabilities
+│   ├── bad_deployment.yaml  # Test YAML with vulnerabilities
+│   ├── bad_dockerfile       # Test Dockerfile
+│   └── config.txt           # Test secrets file
 └── main.go
 ```
 
@@ -161,13 +166,13 @@ infraguardian/
 ## 🛠️ **Dependencies**
 
 ### Zero Manual Setup Required! 🎉
-InfraGuardian automatically downloads required tools on first use:
-- **Hadolint** (Dockerfile linting) → Auto-downloaded to `~/.infraguardian/bin/`
-- **Kubesec** (K8s security scanning) → Auto-downloaded to `~/.infraguardian/bin/`
+GreninjaSec automatically downloads required tools on first use:
+- **Hadolint** (Dockerfile linting) → Auto-downloaded to `~/.greninjasec/bin/`
+- **Kubesec** (K8s security scanning) → Auto-downloaded to `~/.greninjasec/bin/`
 
 The tool checks for binaries in this order:
 1. System PATH (`/usr/local/bin/`, etc.)
-2. User's home directory (`~/.infraguardian/bin/`)
+2. User's home directory (`~/.greninjasec/bin/`)
 3. Auto-download if not found
 
 **No sudo required** — everything installs to your home directory.
@@ -207,10 +212,15 @@ Edit `internal/rules/default_rules.yaml` to add custom rules:
 
 ```bash
 # Run on example files
-./infraguardian --path examples/
+./greninjasec --path examples/
 
 # Test JSON output
-./infraguardian --path examples/ --format json | jq
+./greninjasec --path examples/ --format json | jq
+
+# Test specific scanners
+./greninjasec --secrets --path examples/
+./greninjasec --dockerfile --path examples/
+./greninjasec --manifest --path examples/
 ```
 
 ---

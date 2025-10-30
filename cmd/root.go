@@ -17,9 +17,9 @@ var (
 	scanDockerfile bool
 	scanAll        bool
 	rootCmd        = &cobra.Command{
-		Use:   "infraguardian",
-		Short: "InfraGuardian - Kubernetes & Infrastructure Security Scanner",
-		Long: `InfraGuardian - A comprehensive security scanner for infrastructure-as-code
+		Use:   "greninjasec",
+		Short: "GreninjaSec - Kubernetes & Infrastructure Security Scanner",
+		Long: `GreninjaSec - A comprehensive security scanner for infrastructure-as-code
 
 Detects security misconfigurations in:
   • Kubernetes manifests (YAML)
@@ -29,25 +29,25 @@ Detects security misconfigurations in:
 
 Examples:
   # Scan everything (manifests + secrets + dockerfiles)
-  infraguardian --all --path /path/to/repo
+  greninjasec --all --path /path/to/repo
 
   # Scan only Kubernetes manifests
-  infraguardian --manifest --path ./k8s
+  greninjasec --manifest --path ./k8s
 
   # Scan only Dockerfiles
-  infraguardian --dockerfile --path .
+  greninjasec --dockerfile --path .
 
   # Scan only for secrets
-  infraguardian --secrets --path .
+  greninjasec --secrets --path .
 
   # Combine scanners
-  infraguardian --manifest --dockerfile --path ./infra
+  greninjasec --manifest --dockerfile --path ./infra
 
   # Output as JSON for CI/CD
-  infraguardian --all --format json
+  greninjasec --all --format json
 
   # Scan current directory (default)
-  infraguardian --all`,
+  greninjasec --all`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if targetPath == "" {
 				targetPath = "."
@@ -85,7 +85,7 @@ Examples:
 			}
 
 			// pretty print
-			fmt.Printf("InfraGuardian Security Scan\n")
+			fmt.Printf("GreninjaSec Security Scan\n")
 			fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 			fmt.Printf("Scanned path: %s\n", targetPath)
 			fmt.Printf("Scan options: ")

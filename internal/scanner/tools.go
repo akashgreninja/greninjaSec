@@ -18,7 +18,7 @@ type ToolManager struct {
 // NewToolManager creates a new tool manager
 func NewToolManager() *ToolManager {
 	homeDir, _ := os.UserHomeDir()
-	binDir := filepath.Join(homeDir, ".infraguardian", "bin")
+	binDir := filepath.Join(homeDir, ".greninjasec", "bin")
 	os.MkdirAll(binDir, 0755)
 
 	return &ToolManager{
