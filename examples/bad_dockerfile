@@ -1,0 +1,20 @@
+# Bad Dockerfile with security issues
+FROM ubuntu:latest
+
+# Running as root (no USER)
+RUN apt-get update && apt-get install -y curl wget
+
+# Hardcoded secret
+ENV API_KEY=sk_live_1234567890abcdef
+ENV DATABASE_PASSWORD=supersecret123
+
+# No cleanup
+RUN apt-get install -y vim
+
+# Using ADD instead of COPY
+ADD app.tar.gz /app/
+
+# No HEALTHCHECK
+EXPOSE 8080
+
+CMD ["python", "app.py"]

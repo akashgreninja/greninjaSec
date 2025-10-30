@@ -35,15 +35,20 @@ go build -o infraguardian
 #### ✅ Security Detection
 **Built-in checks:**
 - ✅ Containers running as root (missing `runAsNonRoot: true`)
-- ✅ **Kubesec integration** for 15+ Kubernetes security best practices:
-  - Missing resource limits (CPU/Memory)
-  - Missing seccomp/AppArmor profiles
-  - Service account token automounting
-  - Missing security contexts (runAsUser, runAsGroup)
-  - Privileged containers
-  - Read-only root filesystem recommendations
-  - Capability drops
-  - And more...
+- ✅ **Kubesec integration** for 15+ Kubernetes security best practices
+- ✅ **Hardcoded secrets detection** (AWS keys, GitHub tokens, Google API keys, private keys, etc.)
+- ✅ **Dockerfile security scanning** via Hadolint (50+ checks)
+- ✅ **Auto-download tool management** (no manual installation required)
+
+**Kubernetes checks (via Kubesec):**
+- Missing resource limits (CPU/Memory)
+- Missing seccomp/AppArmor profiles
+- Service account token automounting
+- Missing security contexts (runAsUser, runAsGroup)
+- Privileged containers
+- Read-only root filesystem recommendations
+- Capability drops
+- And 8+ more...
 
 ✅ **Severity levels:** CRITICAL / HIGH / MEDIUM / LOW
 
@@ -155,9 +160,20 @@ infraguardian/
 
 ## 🛠️ **Dependencies**
 
-### Required
+### Zero Manual Setup Required! 🎉
+InfraGuardian automatically downloads required tools on first use:
+- **Hadolint** (Dockerfile linting) → Auto-downloaded to `~/.infraguardian/bin/`
+- **Kubesec** (K8s security scanning) → Auto-downloaded to `~/.infraguardian/bin/`
+
+The tool checks for binaries in this order:
+1. System PATH (`/usr/local/bin/`, etc.)
+2. User's home directory (`~/.infraguardian/bin/`)
+3. Auto-download if not found
+
+**No sudo required** — everything installs to your home directory.
+
+### Build Requirements
 - Go 1.21+
-- [Kubesec](https://github.com/controlplaneio/kubesec) (optional, for enhanced scanning)
 
 ### Go Modules
 ```

@@ -23,8 +23,9 @@ type Finding struct {
 
 // ScanOptions defines what types of scans to perform
 type ScanOptions struct {
-	ScanManifests bool // Scan Kubernetes YAML manifests
-	ScanSecrets   bool // Scan for hardcoded secrets
+	ScanManifests  bool // Scan Kubernetes YAML manifests
+	ScanSecrets    bool // Scan for hardcoded secrets
+	ScanDockerfile bool // Scan Dockerfiles
 }
 
 // Scanner is a minimal repo scanner.
@@ -37,8 +38,9 @@ func NewScanner() *Scanner {
 // Scan walks the path and scans for all security issues (backward compatibility)
 func (s *Scanner) Scan(path string) ([]Finding, error) {
 	opts := ScanOptions{
-		ScanManifests: true,
-		ScanSecrets:   true,
+		ScanManifests:  true,
+		ScanSecrets:    true,
+		ScanDockerfile: true,
 	}
 	return s.ScanWithOptions(path, opts)
 }
@@ -65,6 +67,12 @@ func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, err
 		if opts.ScanSecrets {
 			secretFindings := scanFileForSecrets(p)
 			findings = append(findings, secretFindings...)
+		}
+
+		// --- Scan Dockerfiles (if enabled) ---
+		if opts.ScanDockerfile {
+			dockerFindings := scanDockerfile(p)
+			findings = append(findings, dockerFindings...)
 		}
 
 		// --- Kubernetes YAML specific scanning (if enabled) ---
@@ -114,7 +122,16 @@ func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, err
 // ----------------------------------------
 
 func runKubesecIntegration(filePath string) []Finding {
-	cmd := exec.Command("kubesec", "scan", "--format", "json", filePath)
+	// Ensure kubesec is available
+	tm := NewToolManager()
+	kubesecPath, err := tm.EnsureKubesec()
+	if err != nil {
+		// Warn but don't fail - just skip kubesec scanning
+		fmt.Fprintf(os.Stderr, "⚠️  Skipping Kubesec scan: %v\n", err)
+		return nil
+	}
+
+	cmd := exec.Command(kubesecPath, "scan", "--format", "json", filePath)
 	output, _ := cmd.CombinedOutput()
 	// Note: kubesec returns exit code 2 even on success, so we ignore the error
 	// We only care if we got valid JSON output

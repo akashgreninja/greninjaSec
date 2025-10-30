@@ -10,11 +10,12 @@ import (
 )
 
 var (
-	targetPath    string
-	format        string
-	scanManifests bool
-	scanSecrets   bool
-	scanAll       bool
+	targetPath      string
+	format          string
+	scanManifests   bool
+	scanSecrets     bool
+	scanDockerfile  bool
+	scanAll         bool
 	rootCmd       = &cobra.Command{
 		Use:   "infraguardian",
 		Short: "InfraGuardian - Kubernetes & Infrastructure Security Scanner",
@@ -23,18 +24,24 @@ var (
 Detects security misconfigurations in:
   • Kubernetes manifests (YAML)
   • Hardcoded secrets (credentials, API keys, tokens)
+  • Dockerfiles (50+ hadolint security checks)
   • Terraform configurations (coming soon)
-  • Dockerfiles (coming soon)
 
 Examples:
-  # Scan everything (manifests + secrets)
+  # Scan everything (manifests + secrets + dockerfiles)
   infraguardian --all --path /path/to/repo
 
   # Scan only Kubernetes manifests
   infraguardian --manifest --path ./k8s
 
+  # Scan only Dockerfiles
+  infraguardian --dockerfile --path .
+
   # Scan only for secrets
   infraguardian --secrets --path .
+
+  # Combine scanners
+  infraguardian --manifest --dockerfile --path ./infra
 
   # Output as JSON for CI/CD
   infraguardian --all --format json
@@ -48,20 +55,23 @@ Examples:
 
 			// Determine what to scan
 			opts := scanner.ScanOptions{
-				ScanManifests: scanManifests,
-				ScanSecrets:   scanSecrets,
+				ScanManifests:  scanManifests,
+				ScanSecrets:    scanSecrets,
+				ScanDockerfile: scanDockerfile,
 			}
 
 			// If --all is specified, enable everything
 			if scanAll {
 				opts.ScanManifests = true
 				opts.ScanSecrets = true
+				opts.ScanDockerfile = true
 			}
 
 			// If nothing specified, default to --all
-			if !scanManifests && !scanSecrets && !scanAll {
+			if !scanManifests && !scanSecrets && !scanDockerfile && !scanAll {
 				opts.ScanManifests = true
 				opts.ScanSecrets = true
+				opts.ScanDockerfile = true
 			}
 
 			s := scanner.NewScanner()
@@ -84,6 +94,9 @@ Examples:
 			}
 			if opts.ScanSecrets {
 				fmt.Printf("[Secrets] ")
+			}
+			if opts.ScanDockerfile {
+				fmt.Printf("[Dockerfiles] ")
 			}
 			fmt.Printf("\n")
 			fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
@@ -144,7 +157,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&format, "format", "f", "pretty", "Output format: pretty|json")
 	rootCmd.Flags().BoolVarP(&scanManifests, "manifest", "m", false, "Scan Kubernetes manifests for misconfigurations")
 	rootCmd.Flags().BoolVarP(&scanSecrets, "secrets", "s", false, "Scan for hardcoded secrets and credentials")
-	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets)")
+	rootCmd.Flags().BoolVarP(&scanDockerfile, "dockerfile", "d", false, "Scan Dockerfiles with hadolint (50+ checks)")
+	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles)")
 }
 
 func Execute() {

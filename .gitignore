@@ -94,3 +94,4 @@ __pycache__/
 *$py.class
 .Python
 venv/
+hadolint
