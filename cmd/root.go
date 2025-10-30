@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	targetPath      string
-	format          string
-	scanManifests   bool
-	scanSecrets     bool
-	scanDockerfile  bool
-	scanAll         bool
-	rootCmd       = &cobra.Command{
+	targetPath     string
+	format         string
+	scanManifests  bool
+	scanSecrets    bool
+	scanDockerfile bool
+	scanAll        bool
+	rootCmd        = &cobra.Command{
 		Use:   "infraguardian",
 		Short: "InfraGuardian - Kubernetes & Infrastructure Security Scanner",
 		Long: `InfraGuardian - A comprehensive security scanner for infrastructure-as-code
