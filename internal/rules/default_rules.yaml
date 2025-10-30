@@ -1,0 +1,6 @@
+# Starter rules (human-readable). Later the scanner will load these rules.
+- id: R001
+  name: "Container missing runAsNonRoot"
+  severity: "HIGH"
+  description: "Containers should set securityContext.runAsNonRoot: true to avoid root user processes."
+  fix: "Set securityContext.runAsNonRoot: true and use non-root base images."
