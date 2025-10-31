@@ -26,6 +26,7 @@ type ScanOptions struct {
 	ScanManifests  bool // Scan Kubernetes YAML manifests
 	ScanSecrets    bool // Scan for hardcoded secrets
 	ScanDockerfile bool // Scan Dockerfiles
+	ScanTerraform  bool // Scan Terraform files
 }
 
 // Scanner is a minimal repo scanner.
@@ -41,6 +42,7 @@ func (s *Scanner) Scan(path string) ([]Finding, error) {
 		ScanManifests:  true,
 		ScanSecrets:    true,
 		ScanDockerfile: true,
+		ScanTerraform:  true,
 	}
 	return s.ScanWithOptions(path, opts)
 }
@@ -73,6 +75,12 @@ func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, err
 		if opts.ScanDockerfile {
 			dockerFindings := scanDockerfile(p)
 			findings = append(findings, dockerFindings...)
+		}
+
+		// --- Scan Terraform files (if enabled) ---
+		if opts.ScanTerraform {
+			terraformFindings := scanTerraform(p)
+			findings = append(findings, terraformFindings...)
 		}
 
 		// --- Kubernetes YAML specific scanning (if enabled) ---

@@ -15,6 +15,7 @@ var (
 	scanManifests  bool
 	scanSecrets    bool
 	scanDockerfile bool
+	scanTerraform  bool
 	scanAll        bool
 	rootCmd        = &cobra.Command{
 		Use:   "greninjasec",
@@ -25,10 +26,10 @@ Detects security misconfigurations in:
   • Kubernetes manifests (YAML)
   • Hardcoded secrets (credentials, API keys, tokens)
   • Dockerfiles (50+ hadolint security checks)
-  • Terraform configurations (coming soon)
+  • Terraform files (100+ tfsec security checks)
 
 Examples:
-  # Scan everything (manifests + secrets + dockerfiles)
+  # Scan everything (manifests + secrets + dockerfiles + terraform)
   greninjasec --all --path /path/to/repo
 
   # Scan only Kubernetes manifests
@@ -37,11 +38,14 @@ Examples:
   # Scan only Dockerfiles
   greninjasec --dockerfile --path .
 
+  # Scan only Terraform files
+  greninjasec --terraform --path ./infra
+
   # Scan only for secrets
   greninjasec --secrets --path .
 
   # Combine scanners
-  greninjasec --manifest --dockerfile --path ./infra
+  greninjasec --manifest --dockerfile --terraform --path ./infra
 
   # Output as JSON for CI/CD
   greninjasec --all --format json
@@ -58,6 +62,7 @@ Examples:
 				ScanManifests:  scanManifests,
 				ScanSecrets:    scanSecrets,
 				ScanDockerfile: scanDockerfile,
+				ScanTerraform:  scanTerraform,
 			}
 
 			// If --all is specified, enable everything
@@ -65,13 +70,15 @@ Examples:
 				opts.ScanManifests = true
 				opts.ScanSecrets = true
 				opts.ScanDockerfile = true
+				opts.ScanTerraform = true
 			}
 
 			// If nothing specified, default to --all
-			if !scanManifests && !scanSecrets && !scanDockerfile && !scanAll {
+			if !scanManifests && !scanSecrets && !scanDockerfile && !scanTerraform && !scanAll {
 				opts.ScanManifests = true
 				opts.ScanSecrets = true
 				opts.ScanDockerfile = true
+				opts.ScanTerraform = true
 			}
 
 			s := scanner.NewScanner()
@@ -97,6 +104,9 @@ Examples:
 			}
 			if opts.ScanDockerfile {
 				fmt.Printf("[Dockerfiles] ")
+			}
+			if opts.ScanTerraform {
+				fmt.Printf("[Terraform] ")
 			}
 			fmt.Printf("\n")
 			fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
@@ -158,7 +168,8 @@ func init() {
 	rootCmd.Flags().BoolVarP(&scanManifests, "manifest", "m", false, "Scan Kubernetes manifests for misconfigurations")
 	rootCmd.Flags().BoolVarP(&scanSecrets, "secrets", "s", false, "Scan for hardcoded secrets and credentials")
 	rootCmd.Flags().BoolVarP(&scanDockerfile, "dockerfile", "d", false, "Scan Dockerfiles with hadolint (50+ checks)")
-	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles)")
+	rootCmd.Flags().BoolVarP(&scanTerraform, "terraform", "t", false, "Scan Terraform files with tfsec (100+ checks)")
+	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles + terraform)")
 }
 
 func Execute() {

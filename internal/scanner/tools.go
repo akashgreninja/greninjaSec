@@ -84,6 +84,35 @@ func (tm *ToolManager) EnsureKubesec() (string, error) {
 	return localPath, nil
 }
 
+// EnsureTfsec ensures tfsec is available
+func (tm *ToolManager) EnsureTfsec() (string, error) {
+	// 1. Check if in PATH
+	if path, err := exec.LookPath("tfsec"); err == nil {
+		return path, nil
+	}
+
+	// 2. Check in our bin directory
+	localPath := filepath.Join(tm.binDir, "tfsec")
+	if _, err := os.Stat(localPath); err == nil {
+		return localPath, nil
+	}
+
+	// 3. Auto-download
+	fmt.Fprintf(os.Stderr, "⏳ Tfsec not found. Downloading...\n")
+
+	url := tm.getTfsecURL()
+	if url == "" {
+		return "", fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
+	if err := tm.downloadBinary(url, localPath); err != nil {
+		return "", fmt.Errorf("failed to download tfsec: %v", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "✅ Tfsec installed to %s\n", localPath)
+	return localPath, nil
+}
+
 // getHadolintURL returns the download URL for the current platform
 func (tm *ToolManager) getHadolintURL() string {
 	version := "v2.12.0"
@@ -116,6 +145,26 @@ func (tm *ToolManager) getKubesecURL() string {
 		return fmt.Sprintf("%s/kubesec_darwin_amd64.tar.gz", baseURL)
 	case "windows":
 		return fmt.Sprintf("%s/kubesec_windows_amd64.tar.gz", baseURL)
+	default:
+		return ""
+	}
+}
+
+// getTfsecURL returns the download URL for tfsec
+func (tm *ToolManager) getTfsecURL() string {
+	version := "v1.28.1"
+	baseURL := fmt.Sprintf("https://github.com/aquasecurity/tfsec/releases/download/%s", version)
+
+	switch runtime.GOOS {
+	case "linux":
+		return fmt.Sprintf("%s/tfsec-linux-amd64", baseURL)
+	case "darwin":
+		if runtime.GOARCH == "arm64" {
+			return fmt.Sprintf("%s/tfsec-darwin-arm64", baseURL)
+		}
+		return fmt.Sprintf("%s/tfsec-darwin-amd64", baseURL)
+	case "windows":
+		return fmt.Sprintf("%s/tfsec-windows-amd64.exe", baseURL)
 	default:
 		return ""
 	}
