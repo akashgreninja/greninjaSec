@@ -54,8 +54,60 @@ type ScanOptions struct {
 
 // ScanResult contains findings and optional attack chain analysis
 type ScanResult struct {
-	Findings     []Finding     `json:"findings"`
-	AttackChains []AttackChain `json:"attack_chains,omitempty"`
+	Findings         []Finding            `json:"findings"`
+	AttackChains     []AttackChain        `json:"attack_chains,omitempty"`
+	ShadowSimulation *ShadowSimulationRef `json:"shadow_simulation,omitempty"`
+}
+
+// ShadowSimulationRef is a reference to shadow simulation data (to avoid circular imports)
+type ShadowSimulationRef struct {
+	AttackPaths      []ShadowAttackPath
+	BlastRadius      ShadowBlastRadius
+	DamageEstimate   ShadowDamageEstimate
+	Metrics          ShadowMetrics
+	Recommendations  []ShadowRecommendation
+}
+
+type ShadowAttackPath struct {
+	Name          string
+	Description   string
+	Vector        string
+	Severity      string
+	Success       bool
+	ExecutionTime string
+	Impact        string
+	Steps         []ShadowAttackStep
+}
+
+type ShadowAttackStep struct {
+	Description string
+	Command     string
+	Output      string
+	Success     bool
+}
+
+type ShadowBlastRadius struct {
+	SystemsCompromised  int
+	SecretsExposed      int
+	DatabasesAccessible int
+	AffectedServices    []string
+}
+
+type ShadowDamageEstimate struct {
+	MinCostUSD float64
+	MaxCostUSD float64
+}
+
+type ShadowMetrics struct {
+	SuccessRate      float64
+	TimeToCompromise string
+}
+
+type ShadowRecommendation struct {
+	Title       string
+	Description string
+	Priority    string
+	FixCommand  string
 }
 
 // Scanner is a minimal repo scanner.

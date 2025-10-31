@@ -71,17 +71,20 @@ func GenerateHTMLReportV2(result ScanResult, outputPath string) error {
 }
 
 type reportDataV2 struct {
-	Timestamp       string
-	TotalFindings   int
-	CriticalCount   int
-	HighCount       int
-	MediumCount     int
-	LowCount        int
-	CVECount        int
-	CVEFindings     []Finding
-	AttackChains    []AttackChain
-	FindingsBySev   map[string][]Finding
-	ScanSummary     string
+	Timestamp        string
+	TotalFindings    int
+	CriticalCount    int
+	HighCount        int
+	MediumCount      int
+	LowCount         int
+	CVECount         int
+	CVEFindings      []Finding
+	AttackChains     []AttackChain
+	FindingsBySev    map[string][]Finding
+	ScanSummary      string
+	ShadowSimulation *ShadowSimulationRef
+	ScannersUsed     []string
+	ScannerCount     int
 }
 
 func prepareReportDataV2(result ScanResult) reportDataV2 {
@@ -134,17 +137,47 @@ func prepareReportDataV2(result ScanResult) reportDataV2 {
 		summary += fmt.Sprintf(" Identified %d potential attack chains.", len(result.AttackChains))
 	}
 
+	// Determine which scanners were used based on findings
+	scannersUsed := make(map[string]bool)
+	for _, finding := range result.Findings {
+		if strings.HasPrefix(finding.RuleID, "KUBESEC_") || finding.RuleID == "R001" {
+			scannersUsed["Kubernetes (kubesec)"] = true
+		} else if strings.HasPrefix(finding.RuleID, "SECRET_") {
+			scannersUsed["Secrets (gitleaks)"] = true
+		} else if strings.HasPrefix(finding.RuleID, "HADOLINT_") {
+			scannersUsed["Docker (hadolint)"] = true
+		} else if strings.HasPrefix(finding.RuleID, "TFSEC_") {
+			scannersUsed["Terraform (tfsec)"] = true
+		} else if strings.HasPrefix(finding.ID, "CVE-") {
+			scannersUsed["CVE (trivy)"] = true
+		}
+	}
+	if result.ShadowSimulation != nil {
+		scannersUsed["Shadow Deploy"] = true
+	}
+	if len(result.AttackChains) > 0 {
+		scannersUsed["Attack Chains"] = true
+	}
+	
+	scannersList := make([]string, 0, len(scannersUsed))
+	for scanner := range scannersUsed {
+		scannersList = append(scannersList, scanner)
+	}
+
 	return reportDataV2{
-		Timestamp:     time.Now().Format("Monday, January 2, 2006 at 3:04 PM"),
-		TotalFindings: totalFindings,
-		CriticalCount: criticalCount,
-		HighCount:     highCount,
-		MediumCount:   mediumCount,
-		LowCount:      lowCount,
-		CVECount:      len(cveFindings),
-		CVEFindings:   cveFindings,
-		AttackChains:  result.AttackChains,
-		FindingsBySev: findingsBySev,
-		ScanSummary:   summary,
+		Timestamp:        time.Now().Format("Monday, January 2, 2006 at 3:04 PM"),
+		TotalFindings:    totalFindings,
+		CriticalCount:    criticalCount,
+		HighCount:        highCount,
+		MediumCount:      mediumCount,
+		LowCount:         lowCount,
+		CVECount:         len(cveFindings),
+		CVEFindings:      cveFindings,
+		AttackChains:     result.AttackChains,
+		FindingsBySev:    findingsBySev,
+		ScanSummary:      summary,
+		ShadowSimulation: result.ShadowSimulation,
+		ScannersUsed:     scannersList,
+		ScannerCount:     len(scannersList),
 	}
 }

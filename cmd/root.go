@@ -94,6 +94,11 @@ Examples:
 				opts.ScanDockerfile = true
 				opts.ScanTerraform = true
 				opts.ScanVulnerabilities = true
+				shadowDeploy = true // Include Shadow Deploy in --all
+				// Auto-generate HTML report for --all if not specified
+				if htmlOutput == "" {
+					htmlOutput = "docs/index.html"
+				}
 			}
 
 			// If nothing specified, default to --all
@@ -103,6 +108,17 @@ Examples:
 				opts.ScanDockerfile = true
 				opts.ScanTerraform = true
 				opts.ScanVulnerabilities = true
+				scanAll = true
+			}
+
+			// Auto-generate HTML for certain scan types if not specified
+			if htmlOutput == "" {
+				// Generate HTML for --all or --shadow-deploy
+				if scanAll {
+					htmlOutput = "docs/index.html"
+				} else if shadowDeploy {
+					htmlOutput = "docs/shadow-report.html"
+				}
 			}
 
 			s := scanner.NewScanner()
@@ -215,8 +231,10 @@ Examples:
 			}
 
 			// Run Shadow Deploy simulation if requested
+			var shadowResult *scanner.ShadowSimulationRef
 			if shadowDeploy {
-				if err := runShadowDeploy(targetPath, findings); err != nil {
+				shadowResult, err = runShadowDeploy(targetPath, findings)
+				if err != nil {
 					fmt.Fprintf(os.Stderr, "⚠️  Shadow Deploy simulation failed: %v\n", err)
 				}
 			}
@@ -233,8 +251,9 @@ Examples:
 			if htmlOutput != "" {
 				// Convert findings to ScanResult for HTML generation
 				result := scanner.ScanResult{
-					Findings:     findings,
-					AttackChains: []scanner.AttackChain{}, // No attack chains for simple scans
+					Findings:         findings,
+					AttackChains:     []scanner.AttackChain{}, // No attack chains for simple scans
+					ShadowSimulation: shadowResult,
 				}
 				if err := scanner.GenerateHTMLReportV2(result, htmlOutput); err != nil {
 					return fmt.Errorf("failed to generate HTML report: %w", err)
@@ -598,13 +617,13 @@ func getSeverityIcon(severity string) string {
 }
 
 // runShadowDeploy executes the Shadow Deploy simulation
-func runShadowDeploy(targetPath string, findings []scanner.Finding) error {
+func runShadowDeploy(targetPath string, findings []scanner.Finding) (*scanner.ShadowSimulationRef, error) {
 	// Convert findings to vulnerabilities for shadow simulator
 	vulns := findingsToVulnerabilities(findings)
 	
 	if len(vulns) == 0 {
 		fmt.Println("\n✅ No exploitable vulnerabilities found for simulation")
-		return nil
+		return nil, nil
 	}
 	
 	// Determine target type based on path/findings
@@ -616,7 +635,7 @@ func runShadowDeploy(targetPath string, findings []scanner.Finding) error {
 		Verbose:        verbose,
 		Isolated:       false,
 		StopOnFailure:  false,
-		GenerateReport: true,
+		GenerateReport: false, // Don't generate separate HTML, we'll use unified report
 		ReportFormat:   "html",
 	}
 	
@@ -643,13 +662,106 @@ func runShadowDeploy(targetPath string, findings []scanner.Finding) error {
 	// Run the simulation
 	result, err := sim.Run(targetPath, targetType, vulns)
 	if err != nil {
-		return fmt.Errorf("simulation failed: %w", err)
+		return nil, fmt.Errorf("simulation failed: %w", err)
 	}
 	
-	// Result is already printed by simulator
-	_ = result
+	// Convert shadow simulation result to scanner format
+	shadowRef := convertShadowToScannerFormat(result)
 	
-	return nil
+	return shadowRef, nil
+}
+
+// convertShadowToScannerFormat converts shadow.SimulationResult to scanner.ShadowSimulationRef
+func convertShadowToScannerFormat(result *shadow.SimulationResult) *scanner.ShadowSimulationRef {
+	if result == nil {
+		return nil
+	}
+	
+	sim := result.Simulation
+	
+	// Convert attack paths
+	attackPaths := make([]scanner.ShadowAttackPath, 0, len(sim.AttackPaths))
+	for _, path := range sim.AttackPaths {
+		steps := make([]scanner.ShadowAttackStep, 0, len(path.Steps))
+		for _, step := range path.Steps {
+			steps = append(steps, scanner.ShadowAttackStep{
+				Description: step.Description,
+				Command:     step.Command,
+				Output:      step.Actual,
+				Success:     step.Success,
+			})
+		}
+		
+		attackPaths = append(attackPaths, scanner.ShadowAttackPath{
+			Name:          path.Name,
+			Description:   path.Description,
+			Vector:        string(path.Vector),
+			Severity:      string(path.Impact),
+			Success:       path.Success,
+			ExecutionTime: path.Duration.String(),
+			Impact:        path.Description,
+			Steps:         steps,
+		})
+	}
+	
+	// Convert blast radius
+	blastRadius := scanner.ShadowBlastRadius{
+		SystemsCompromised:  sim.BlastRadius.SystemsCompromised,
+		SecretsExposed:      sim.BlastRadius.SecretsExposed,
+		DatabasesAccessible: len(sim.BlastRadius.DatabasesAccessible),
+		AffectedServices:    append(sim.BlastRadius.ServicesCompromised, sim.BlastRadius.PodsCompromised...),
+	}
+	
+	// Convert damage estimate (MinCost/MaxCost in float64, convert to millions)
+	damageEstimate := scanner.ShadowDamageEstimate{
+		MinCostUSD: sim.EstimatedDamage.MinCost / 1000000.0,
+		MaxCostUSD: sim.EstimatedDamage.MaxCost / 1000000.0,
+	}
+	
+	// Calculate metrics
+	successCount := 0
+	for _, path := range sim.AttackPaths {
+		if path.Success {
+			successCount++
+		}
+	}
+	successRate := 0.0
+	if len(sim.AttackPaths) > 0 {
+		successRate = (float64(successCount) / float64(len(sim.AttackPaths))) * 100.0
+	}
+	
+	metrics := scanner.ShadowMetrics{
+		SuccessRate:      successRate,
+		TimeToCompromise: sim.TimeToCompromise.String(),
+	}
+	
+	// Convert recommendations
+	recommendations := make([]scanner.ShadowRecommendation, 0, len(result.Recommendations))
+	for _, rec := range result.Recommendations {
+		priority := "MEDIUM"
+		if rec.Priority == 1 {
+			priority = "HIGH"
+		} else if rec.Priority == 2 {
+			priority = "MEDIUM"
+		} else {
+			priority = "LOW"
+		}
+		
+		recommendations = append(recommendations, scanner.ShadowRecommendation{
+			Title:       rec.Title,
+			Description: rec.Description,
+			Priority:    priority,
+			FixCommand:  rec.Fix,
+		})
+	}
+	
+	return &scanner.ShadowSimulationRef{
+		AttackPaths:     attackPaths,
+		BlastRadius:     blastRadius,
+		DamageEstimate:  damageEstimate,
+		Metrics:         metrics,
+		Recommendations: recommendations,
+	}
 }
 
 // findingsToVulnerabilities converts scanner findings to shadow vulnerabilities

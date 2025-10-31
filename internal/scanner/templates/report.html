@@ -39,6 +39,7 @@
 
         <div class="tabs">
             <button class="tab-button active" onclick="openTab(event, 'overview')">📊 Overview</button>
+            {{if .ShadowSimulation}}<button class="tab-button" onclick="openTab(event, 'shadow-deploy')">🎭 Shadow Deploy ({{len .ShadowSimulation.AttackPaths}})</button>{{end}}
             {{if .CVEFindings}}<button class="tab-button" onclick="openTab(event, 'cve')">🔍 CVE ({{.CVECount}})</button>{{end}}
             {{if .AttackChains}}<button class="tab-button" onclick="openTab(event, 'attack-chains')">🎯 Attack Chains ({{len .AttackChains}})</button>{{end}}
             <button class="tab-button" onclick="openTab(event, 'kubernetes')">☸️ Kubernetes</button>
@@ -73,8 +74,13 @@
                 {{end}}
                 <div class="quick-stat-card scanners">
                     <div class="quick-stat-icon">🔧</div>
-                    <div class="quick-stat-number">5</div>
+                    <div class="quick-stat-number">{{.ScannerCount}}</div>
                     <div class="quick-stat-label">Scanners Used</div>
+                    <div class="scanner-list">
+                        {{range .ScannersUsed}}
+                        <span class="scanner-badge">{{.}}</span>
+                        {{end}}
+                    </div>
                 </div>
             </div>
 
@@ -181,6 +187,131 @@
                 </div>
             </div>
         </div>
+
+        <!-- Shadow Deploy Tab -->
+        {{if .ShadowSimulation}}
+        <div id="shadow-deploy" class="tab-content">
+            <h2 class="section-title">🎭 Shadow Deploy Attack Simulation</h2>
+            
+            <!-- Metrics Dashboard -->
+            <div class="shadow-metrics">
+                <div class="shadow-metric-card success">
+                    <div class="shadow-metric-label">Attack Success Rate</div>
+                    <div class="shadow-metric-value">{{printf "%.0f" .ShadowSimulation.Metrics.SuccessRate}}%</div>
+                </div>
+                <div class="shadow-metric-card time">
+                    <div class="shadow-metric-label">Time to Compromise</div>
+                    <div class="shadow-metric-value">{{.ShadowSimulation.Metrics.TimeToCompromise}}</div>
+                </div>
+                <div class="shadow-metric-card cost">
+                    <div class="shadow-metric-label">Estimated Breach Cost</div>
+                    <div class="shadow-metric-value">${{printf "%.1f" .ShadowSimulation.DamageEstimate.MinCostUSD}}M - ${{printf "%.1f" .ShadowSimulation.DamageEstimate.MaxCostUSD}}M</div>
+                </div>
+                <div class="shadow-metric-card systems">
+                    <div class="shadow-metric-label">Systems Compromised</div>
+                    <div class="shadow-metric-value">{{.ShadowSimulation.BlastRadius.SystemsCompromised}}</div>
+                </div>
+            </div>
+
+            <!-- Blast Radius -->
+            {{if .ShadowSimulation.BlastRadius}}
+            <div class="blast-radius-section">
+                <h3>💥 Blast Radius</h3>
+                <div class="blast-items">
+                    <div class="blast-item">
+                        <span class="blast-icon">🖥️</span>
+                        <span class="blast-label">Systems Compromised:</span>
+                        <span class="blast-value">{{.ShadowSimulation.BlastRadius.SystemsCompromised}}</span>
+                    </div>
+                    <div class="blast-item">
+                        <span class="blast-icon">🔑</span>
+                        <span class="blast-label">Secrets Exposed:</span>
+                        <span class="blast-value">{{.ShadowSimulation.BlastRadius.SecretsExposed}}</span>
+                    </div>
+                    <div class="blast-item">
+                        <span class="blast-icon">💾</span>
+                        <span class="blast-label">Databases Accessible:</span>
+                        <span class="blast-value">{{.ShadowSimulation.BlastRadius.DatabasesAccessible}}</span>
+                    </div>
+                    {{range .ShadowSimulation.BlastRadius.AffectedServices}}
+                    <div class="blast-item service">
+                        <span class="blast-icon">⚙️</span>
+                        <span class="blast-value">{{.}}</span>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Attack Paths -->
+            <div class="shadow-attacks-section">
+                <h3>⚔️ Simulated Attack Paths ({{len .ShadowSimulation.AttackPaths}})</h3>
+                {{range $path := .ShadowSimulation.AttackPaths}}
+                <div class="shadow-attack-card">
+                    <div class="shadow-attack-header">
+                        <div>
+                            <h4>{{$path.Name}}</h4>
+                            <p class="shadow-attack-desc">{{$path.Description}}</p>
+                        </div>
+                        <span class="severity-badge severity-{{lower $path.Severity}}">{{$path.Severity}}</span>
+                    </div>
+                    
+                    <div class="shadow-attack-meta">
+                        <span class="meta-item">🎯 Vector: {{$path.Vector}}</span>
+                        <span class="meta-item">⏱️ Duration: {{$path.ExecutionTime}}</span>
+                        <span class="meta-item">{{if $path.Success}}✅ Success{{else}}❌ Failed{{end}}</span>
+                    </div>
+
+                    <!-- Attack Steps -->
+                    <div class="shadow-steps">
+                        <h5>Attack Steps:</h5>
+                        {{range $idx, $step := $path.Steps}}
+                        <div class="shadow-step">
+                            <div class="shadow-step-num">{{add $idx 1}}</div>
+                            <div class="shadow-step-content">
+                                <div class="shadow-step-desc">{{$step.Description}}</div>
+                                {{if $step.Command}}
+                                <code class="shadow-command">$ {{$step.Command}}</code>
+                                {{end}}
+                                {{if $step.Output}}
+                                <div class="shadow-output">{{$step.Output}}</div>
+                                {{end}}
+                            </div>
+                            <span class="shadow-step-status">{{if $step.Success}}✓{{else}}✗{{end}}</span>
+                        </div>
+                        {{end}}
+                    </div>
+
+                    <!-- Impact -->
+                    {{if $path.Impact}}
+                    <div class="shadow-impact">
+                        <strong>💥 Impact:</strong> {{$path.Impact}}
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+
+            <!-- Recommendations -->
+            {{if .ShadowSimulation.Recommendations}}
+            <div class="shadow-recommendations">
+                <h3>🛡️ Defense Recommendations</h3>
+                {{range $rec := .ShadowSimulation.Recommendations}}
+                <div class="shadow-rec-card priority-{{lower $rec.Priority}}">
+                    <div class="shadow-rec-header">
+                        <span class="priority-badge priority-{{lower $rec.Priority}}">{{$rec.Priority}}</span>
+                        <span class="shadow-rec-title">{{$rec.Title}}</span>
+                    </div>
+                    <p class="shadow-rec-desc">{{$rec.Description}}</p>
+                    {{if $rec.FixCommand}}
+                    <code class="shadow-fix-command">$ {{$rec.FixCommand}}</code>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+        {{end}}
 
         <!-- CVE Tab -->
         {{if .CVEFindings}}
