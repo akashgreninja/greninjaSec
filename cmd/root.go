@@ -23,6 +23,7 @@ var (
 	analyzeChains  bool
 	aiEnhance      bool
 	verbose        bool
+	Version        = "dev" // Set via ldflags during build
 	rootCmd        = &cobra.Command{
 		Use:   "greninjasec",
 		Short: "GreninjaSec - Kubernetes & Infrastructure Security Scanner",
@@ -205,9 +206,21 @@ func printFindings(header string, findings []scanner.Finding) {
 	}
 }
 
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number of GreninjaSec",
+	Long:  `All software has versions. This is GreninjaSec's.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("GreninjaSec %s\n", Version)
+	},
+}
+
 func init() {
 	// Load .env file if it exists
 	godotenv.Load()
+
+	// Add version command
+	rootCmd.AddCommand(versionCmd)
 
 	rootCmd.Flags().StringVarP(&targetPath, "path", "p", ".", "Path to scan (defaults to current directory)")
 	rootCmd.Flags().StringVarP(&format, "format", "f", "pretty", "Output format: pretty|json")

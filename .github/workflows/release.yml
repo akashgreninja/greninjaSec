@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags like v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
+        run: |
+          # Build for Linux (amd64)
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${{ steps.get_version.outputs.VERSION }}" -o greninjasec-linux-amd64
+          
+          # Build for Linux (arm64)
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -X main.Version=${{ steps.get_version.outputs.VERSION }}" -o greninjasec-linux-arm64
+          
+          # Build for macOS (amd64)
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${{ steps.get_version.outputs.VERSION }}" -o greninjasec-darwin-amd64
+          
+          # Build for macOS (arm64 - M1/M2)
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w -X main.Version=${{ steps.get_version.outputs.VERSION }}" -o greninjasec-darwin-arm64
+          
+          # Build for Windows (amd64)
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${{ steps.get_version.outputs.VERSION }}" -o greninjasec-windows-amd64.exe
+          
+          # Make binaries executable
+          chmod +x greninjasec-*
+
+      - name: Create checksums
+        run: |
+          sha256sum greninjasec-* > checksums.txt
+          cat checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            greninjasec-linux-amd64
+            greninjasec-linux-arm64
+            greninjasec-darwin-amd64
+            greninjasec-darwin-arm64
+            greninjasec-windows-amd64.exe
+            checksums.txt
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## GreninjaSec ${{ steps.get_version.outputs.VERSION }} 🥷🔥
+            
+            Multi-platform infrastructure security scanner with attack chain analysis.
+            
+            ### Installation
+            
+            **Linux (x64):**
+            ```bash
+            curl -L https://github.com/akashgreninja/greninjaSec/releases/download/${{ steps.get_version.outputs.VERSION }}/greninjasec-linux-amd64 -o greninjasec
+            chmod +x greninjasec
+            sudo mv greninjasec /usr/local/bin/
+            ```
+            
+            **macOS (Intel):**
+            ```bash
+            curl -L https://github.com/akashgreninja/greninjaSec/releases/download/${{ steps.get_version.outputs.VERSION }}/greninjasec-darwin-amd64 -o greninjasec
+            chmod +x greninjasec
+            sudo mv greninjasec /usr/local/bin/
+            ```
+            
+            **macOS (M1/M2):**
+            ```bash
+            curl -L https://github.com/akashgreninja/greninjaSec/releases/download/${{ steps.get_version.outputs.VERSION }}/greninjasec-darwin-arm64 -o greninjasec
+            chmod +x greninjasec
+            sudo mv greninjasec /usr/local/bin/
+            ```
+            
+            **Windows:**
+            Download `greninjasec-windows-amd64.exe` and add to your PATH.
+            
+            ### Features
+            - 🔍 Kubernetes manifest scanning
+            - 🔑 Secrets detection (12+ patterns)
+            - 🐳 Dockerfile security analysis
+            - ☁️ Terraform security scanning
+            - ⛓️ Attack chain analysis (rule-based + AI)
+            - 🤖 AI-enhanced threat detection
+            - 📦 Auto-downloads required tools (kubesec, hadolint, tfsec)
+            
+            ### Quick Start
+            ```bash
+            greninjasec --all --attack-chains --path /your/infra/code
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

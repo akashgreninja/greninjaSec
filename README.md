@@ -8,47 +8,81 @@ A lightweight, offensive security scanner for Kubernetes infrastructure. Detects
 
 ## 🚀 **Quick Start**
 
-```bash
-# Build the binary
-go build -o greninjasec
+### Installation (Recommended)
 
-# Scan a directory
-./greninjasec --path examples/
+**One-line installer (Linux/macOS):**
+```bash
+curl -sSL https://raw.githubusercontent.com/akashgreninja/greninjaSec/main/install.sh | bash
+```
+
+**Manual installation:**
+```bash
+# Linux (x64)
+curl -L https://github.com/akashgreninja/greninjaSec/releases/latest/download/greninjasec-linux-amd64 -o greninjasec
+chmod +x greninjasec
+sudo mv greninjasec /usr/local/bin/
+
+# macOS (M1/M2)
+curl -L https://github.com/akashgreninja/greninjaSec/releases/latest/download/greninjasec-darwin-arm64 -o greninjasec
+chmod +x greninjasec
+sudo mv greninjasec /usr/local/bin/
+
+# macOS (Intel)
+curl -L https://github.com/akashgreninja/greninjaSec/releases/latest/download/greninjasec-darwin-amd64 -o greninjasec
+chmod +x greninjasec
+sudo mv greninjasec /usr/local/bin/
+```
+
+**From source:**
+```bash
+git clone https://github.com/akashgreninja/greninjaSec.git
+cd greninjaSec
+go build -o greninjasec
+```
+
+### Usage
+
+```bash
+# Scan a directory with all scanners + attack chain analysis
+greninjasec --all --attack-chains --path /path/to/your/code
+
+# Scan specific types
+greninjasec --manifest --secrets --path examples/
 
 # Output as JSON (for CI/CD)
-./greninjasec --path . --format json
+greninjasec --all --format json --path .
+
+# Verbose output (show all findings)
+greninjasec --all --attack-chains --verbose --path examples/
 ```
 
 ---
 
-## ✅ **Currently Implemented (MVP)**
+## ✅ **Currently Implemented**
 
 ### 🧱 Core Security Engine
 
 #### ✅ Full Repo Scanner
 - ✅ Single Go binary — scans repos recursively
-- ✅ **Supports:** Kubernetes YAML files (`.yaml`, `.yml`)
+- ✅ **Supports:** Kubernetes YAML, Dockerfiles, Terraform files
 - ✅ Multi-document YAML support (handles `---` separated docs)
 - ✅ No dependencies required — runs locally
 - ✅ Smart directory skipping (`.git`, `vendor`, `node_modules`)
+- ✅ **Pre-built binaries** for Linux, macOS, Windows (no compilation needed!)
 
 #### ✅ Security Detection
-**Built-in checks:**
-- ✅ Containers running as root (missing `runAsNonRoot: true`)
-- ✅ **Kubesec integration** for 15+ Kubernetes security best practices
-- ✅ **Hardcoded secrets detection** (AWS keys, GitHub tokens, Google API keys, private keys, etc.)
+**Multi-scanner support:**
+- ✅ **Kubernetes manifests** via Kubesec (15+ checks)
+- ✅ **Hardcoded secrets detection** (12+ patterns: AWS keys, GitHub tokens, Google API keys, private keys, high entropy strings)
 - ✅ **Dockerfile security scanning** via Hadolint (50+ checks)
+- ✅ **Terraform security scanning** via Tfsec (100+ checks)
 - ✅ **Auto-download tool management** (no manual installation required)
 
-**Kubernetes checks (via Kubesec):**
-- Missing resource limits (CPU/Memory)
-- Missing seccomp/AppArmor profiles
-- Service account token automounting
-- Missing security contexts (runAsUser, runAsGroup)
-- Privileged containers
-- Read-only root filesystem recommendations
-- Capability drops
-- And 8+ more...
+**Advanced Features:**
+- ✅ **Attack Chain Analyzer** — Correlates findings into exploit paths (8 pre-defined templates)
+- ✅ **AI-Enhanced Analysis** — Optional OpenWebUI integration for advanced threat detection
+- ✅ **Smart Output Formatting** — Concise mode (top 3 per severity) or verbose mode (all details)
+- ✅ **Priority Recommendations** — Actionable summary with top risks
 
 ✅ **Severity levels:** CRITICAL / HIGH / MEDIUM / LOW
 
