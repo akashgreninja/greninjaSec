@@ -179,18 +179,18 @@ func printFindings(header string, findings []scanner.Finding) {
 
 	fmt.Printf("%s (%d)\n", header, len(findings))
 	fmt.Printf("─────────────────────────────────────────────────────────\n")
-	
+
 	// In non-verbose mode, show only top 3 findings per severity
 	limit := len(findings)
 	if !verbose && limit > 3 {
 		limit = 3
 	}
-	
+
 	for i := 0; i < limit; i++ {
 		f := findings[i]
 		fmt.Printf("[%d] %s - %s\n", i+1, f.RuleID, f.Title)
 		fmt.Printf("    File: %s\n", f.File)
-		
+
 		// Truncate long snippets
 		snippet := f.Snippet
 		if len(snippet) > 100 && !verbose {
@@ -198,7 +198,7 @@ func printFindings(header string, findings []scanner.Finding) {
 		}
 		fmt.Printf("    Snippet: %s\n\n", snippet)
 	}
-	
+
 	// Show count of hidden findings
 	if !verbose && len(findings) > 3 {
 		fmt.Printf("    ... and %d more %s findings (use --verbose to see all)\n\n", len(findings)-3, strings.ToLower(header))
@@ -311,14 +311,14 @@ func printResultPretty(result scanner.ScanResult, opts scanner.ScanOptions) erro
 		fmt.Printf("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 		fmt.Printf("📊 SUMMARY\n")
 		fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
-		
+
 		totalIssues := len(critical) + len(high) + len(medium) + len(low)
 		fmt.Printf("Total Issues: %d\n", totalIssues)
 		fmt.Printf("  🔴 Critical: %d\n", len(critical))
 		fmt.Printf("  🟠 High: %d\n", len(high))
 		fmt.Printf("  🟡 Medium: %d\n", len(medium))
 		fmt.Printf("  🟢 Low: %d\n\n", len(low))
-		
+
 		if len(result.AttackChains) > 0 {
 			fmt.Printf("Attack Chains: %d\n", len(result.AttackChains))
 			criticalChains := 0
@@ -332,7 +332,7 @@ func printResultPretty(result scanner.ScanResult, opts scanner.ScanOptions) erro
 			}
 			fmt.Printf("\n")
 		}
-		
+
 		// Priority recommendations
 		if len(critical) > 0 || len(high) > 0 {
 			fmt.Printf("🎯 PRIORITY ACTIONS:\n")
@@ -379,7 +379,7 @@ func printAttackChains(chains []scanner.AttackChain) {
 		if !verbose && stepLimit > 5 {
 			stepLimit = 5
 		}
-		
+
 		fmt.Printf("    Attack Steps:\n")
 		for j := 0; j < stepLimit; j++ {
 			step := chain.Steps[j]
@@ -388,7 +388,7 @@ func printAttackChains(chains []scanner.AttackChain) {
 				fmt.Printf("         └─ Finding: %s\n", step.FindingID)
 			}
 		}
-		
+
 		if !verbose && len(chain.Steps) > 5 {
 			fmt.Printf("      ... %d more steps (use --verbose to see all)\n", len(chain.Steps)-5)
 		}
@@ -401,13 +401,13 @@ func printAttackChains(chains []scanner.AttackChain) {
 		if !verbose && remLimit > 3 {
 			remLimit = 3
 		}
-		
+
 		for j := 0; j < remLimit; j++ {
 			if remLines[j] != "" {
 				fmt.Printf("       %s\n", remLines[j])
 			}
 		}
-		
+
 		if !verbose && len(remLines) > 3 {
 			fmt.Printf("       ... (use --verbose for complete remediation steps)\n")
 		}
@@ -417,7 +417,7 @@ func printAttackChains(chains []scanner.AttackChain) {
 			fmt.Printf("    ───────────────────────────────────────────────────\n\n")
 		}
 	}
-	
+
 	if !verbose && len(chains) > 3 {
 		fmt.Printf("\n    💡 Showing top 3 attack chains (total: %d). Use --verbose to see all.\n", len(chains))
 	}

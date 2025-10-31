@@ -172,30 +172,57 @@ func (tm *ToolManager) getTfsecURL() string {
 
 // downloadBinary downloads a binary from url and saves it to dest
 func (tm *ToolManager) downloadBinary(url, dest string) error {
+	// Create HTTP client that follows redirects
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// Allow up to 10 redirects
+			if len(via) >= 10 {
+				return fmt.Errorf("too many redirects")
+			}
+			return nil
+		},
+	}
+
 	// Download
-	resp, err := http.Get(url)
+	fmt.Fprintf(os.Stderr, "   Downloading from: %s\n", url)
+	resp, err := client.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("HTTP request failed: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("download failed: HTTP %d", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("download failed: HTTP %d - %s", resp.StatusCode, string(body[:min(200, len(body))]))
 	}
 
 	// Create file
 	out, err := os.Create(dest)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create file: %v", err)
 	}
 	defer out.Close()
 
-	// Copy content
-	_, err = io.Copy(out, resp.Body)
+	// Copy content with progress
+	written, err := io.Copy(out, resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to save file: %v", err)
 	}
 
+	fmt.Fprintf(os.Stderr, "   Downloaded %d bytes\n", written)
+
 	// Make executable
-	return os.Chmod(dest, 0755)
+	if err := os.Chmod(dest, 0755); err != nil {
+		return fmt.Errorf("failed to make executable: %v", err)
+	}
+
+	return nil
+}
+
+// min helper function
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
