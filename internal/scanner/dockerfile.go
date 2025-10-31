@@ -53,7 +53,7 @@ func scanDockerfile(filePath string) []Finding {
 	var findings []Finding
 	for _, r := range results {
 		f := Finding{
-			RuleID:   "HADOLINT_" + r.Code,
+			ID:   "HADOLINT_" + r.Code,
 			Title:    r.Message,
 			Severity: mapHadolintSeverity(r.Level),
 			File:     filePath,

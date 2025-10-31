@@ -94,7 +94,7 @@ func prepareReportDataV2(result ScanResult) reportDataV2 {
 	// Extract CVE findings
 	var cveFindings []Finding
 	for _, finding := range result.Findings {
-		if strings.HasPrefix(finding.RuleID, "CVE-") {
+		if strings.HasPrefix(finding.ID, "CVE-") {
 			cveFindings = append(cveFindings, finding)
 		}
 	}

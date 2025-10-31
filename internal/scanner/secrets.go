@@ -150,7 +150,7 @@ func scanFileForSecrets(filePath string) []Finding {
 				redacted := redactSecret(secretValue)
 
 				f := Finding{
-					RuleID:   pattern.ID,
+					ID:   pattern.ID,
 					Title:    pattern.Name,
 					Severity: pattern.Severity,
 					File:     filePath,
@@ -170,7 +170,7 @@ func scanFileForSecrets(filePath string) []Finding {
 					entropy := calculateEntropy(cleaned)
 					if entropy > 4.8 { // Increased threshold to reduce false positives
 						f := Finding{
-							RuleID:   "SECRET_HIGH_ENTROPY",
+							ID:   "SECRET_HIGH_ENTROPY",
 							Title:    "High Entropy String (Possible Secret)",
 							Severity: "MEDIUM",
 							File:     filePath,

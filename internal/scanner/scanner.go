@@ -12,13 +12,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Finding is a basic scanner output structure.
+// Finding represents a single security issue discovered
 type Finding struct {
-	RuleID   string `json:"rule_id"`
+	ID       string `json:"id"`
 	Title    string `json:"title"`
 	Severity string `json:"severity"`
+	Message  string `json:"message"`
 	File     string `json:"file"`
 	Snippet  string `json:"snippet"`
+	
+	// AI remediation (populated if --ai-remediation flag is used)
+	AIRemediation *AIRemediationData `json:"ai_remediation,omitempty"`
+}
+
+// AIRemediationData holds AI-generated fix suggestions
+type AIRemediationData struct {
+	Summary         string   `json:"summary"`
+	Explanation     string   `json:"explanation"`
+	RiskAnalysis    string   `json:"risk_analysis"`
+	CodePatch       string   `json:"code_patch,omitempty"`
+	Commands        []string `json:"commands,omitempty"`
+	ManualSteps     []string `json:"manual_steps,omitempty"`
+	AlternateFix    string   `json:"alternate_fix,omitempty"`
+	ConfidenceScore float64  `json:"confidence_score"`
+	TestingSteps    []string `json:"testing_steps,omitempty"`
+	References      []string `json:"references,omitempty"`
 }
 
 // ScanOptions defines what types of scans to perform
@@ -30,6 +48,7 @@ type ScanOptions struct {
 	ScanVulnerabilities bool // Scan for CVEs with Trivy
 	AnalyzeChains       bool // Analyze attack chains
 	AIEnhance           bool // Use AI for enhanced attack chain analysis
+	AIRemediation       bool // Get AI-powered fix suggestions
 }
 
 // ScanResult contains findings and optional attack chain analysis
@@ -129,7 +148,7 @@ func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, err
 			// --- Custom rule: missing runAsNonRoot ---
 			if matchesMissingRunAsNonRoot(doc) {
 				f := Finding{
-					RuleID:   "R001",
+					ID:   "R001",
 					Title:    "Container missing runAsNonRoot",
 					Severity: "HIGH",
 					File:     p,
@@ -240,7 +259,7 @@ func runKubesecIntegration(filePath string) []Finding {
 	// Convert Kubesec critical findings
 	for _, c := range res.Scoring.Critical {
 		f := Finding{
-			RuleID:   "KUBESEC_CRITICAL_" + c.ID,
+			ID:   "KUBESEC_CRITICAL_" + c.ID,
 			Title:    c.Reason,
 			Severity: "CRITICAL",
 			File:     filePath,
@@ -255,7 +274,7 @@ func runKubesecIntegration(filePath string) []Finding {
 			break
 		}
 		f := Finding{
-			RuleID:   "KUBESEC_" + a.ID,
+			ID:   "KUBESEC_" + a.ID,
 			Title:    a.Reason,
 			Severity: "MEDIUM",
 			File:     filePath,

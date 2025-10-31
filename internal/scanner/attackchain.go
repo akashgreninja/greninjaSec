@@ -166,7 +166,7 @@ func matchTemplate(template AttackChainTemplate, findings []Finding) []Finding {
 		// Single pattern - just check if exists
 		for _, pattern := range template.Patterns {
 			for _, finding := range findings {
-				if matchPattern(pattern, finding.RuleID) {
+				if matchPattern(pattern, finding.ID) {
 					matched = append(matched, finding)
 				}
 			}
@@ -179,7 +179,7 @@ func matchTemplate(template AttackChainTemplate, findings []Finding) []Finding {
 
 	for i, pattern := range template.Patterns {
 		for _, finding := range findings {
-			if matchPattern(pattern, finding.RuleID) {
+			if matchPattern(pattern, finding.ID) {
 				patternMatches[i] = append(patternMatches[i], finding)
 			}
 		}
@@ -220,7 +220,7 @@ func generateSteps(template AttackChainTemplate, findings []Finding) []ChainStep
 	for i, finding := range findings {
 		step := ChainStep{
 			Step:        i + 1,
-			FindingID:   finding.RuleID,
+			FindingID:   finding.ID,
 			Description: generateStepDescription(i+1, finding, template.Name),
 		}
 		steps = append(steps, step)
@@ -236,19 +236,19 @@ func generateStepDescription(stepNum int, finding Finding, chainName string) str
 	
 	// For specific finding types, provide detailed descriptions
 	switch {
-	case strings.HasPrefix(finding.RuleID, "SECRET_AWS"):
+	case strings.HasPrefix(finding.ID, "SECRET_AWS"):
 		return fmt.Sprintf("Hardcoded AWS credentials found in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "SECRET_GITHUB"):
+	case strings.HasPrefix(finding.ID, "SECRET_GITHUB"):
 		return fmt.Sprintf("GitHub token exposed in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "SECRET_GOOGLE"):
+	case strings.HasPrefix(finding.ID, "SECRET_GOOGLE"):
 		return fmt.Sprintf("Google API key found in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "SECRET_"):
+	case strings.HasPrefix(finding.ID, "SECRET_"):
 		return fmt.Sprintf("Secret credentials in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "CVE_"):
+	case strings.HasPrefix(finding.ID, "CVE_"):
 		// Extract CVE ID and package name from snippet
 		snippet := finding.Snippet
 		if strings.Contains(snippet, "CVE:") {
@@ -256,17 +256,17 @@ func generateStepDescription(stepNum int, finding Finding, chainName string) str
 		}
 		return fmt.Sprintf("CVE vulnerability in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "TFSEC_"):
+	case strings.HasPrefix(finding.ID, "TFSEC_"):
 		// Show the actual terraform issue, not generic text
 		return fmt.Sprintf("Terraform: %s (in %s)", finding.Title, fileInfo)
 	
-	case finding.RuleID == "R001":
+	case finding.ID == "R001":
 		return fmt.Sprintf("Container running as root in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "KUBESEC_"):
+	case strings.HasPrefix(finding.ID, "KUBESEC_"):
 		return fmt.Sprintf("K8s misconfiguration in %s - %s", fileInfo, finding.Title)
 	
-	case strings.HasPrefix(finding.RuleID, "HADOLINT_"):
+	case strings.HasPrefix(finding.ID, "HADOLINT_"):
 		return fmt.Sprintf("Dockerfile issue in %s - %s", fileInfo, finding.Title)
 	
 	default:

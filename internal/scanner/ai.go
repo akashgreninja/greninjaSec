@@ -132,7 +132,7 @@ func prepareFindingsSummary(findings []Finding) string {
 		if findings, ok := bySeverity[severity]; ok && len(findings) > 0 {
 			summary.WriteString(fmt.Sprintf("\n%s (%d findings):\n", severity, len(findings)))
 			for _, f := range findings {
-				summary.WriteString(fmt.Sprintf("  - %s: %s (File: %s)\n", f.RuleID, f.Title, f.File))
+				summary.WriteString(fmt.Sprintf("  - %s: %s (File: %s)\n", f.ID, f.Title, f.File))
 			}
 		}
 	}
@@ -315,7 +315,7 @@ func isLikelyFalsePositive(f Finding) bool {
 	// Skip test files with obvious test data
 	if strings.Contains(file, "_test.go") || strings.Contains(file, "/test/") {
 		// Allow only truly dangerous secrets in test files
-		if f.RuleID == "SECRET_HIGH_ENTROPY" {
+		if f.ID == "SECRET_HIGH_ENTROPY" {
 			return true
 		}
 		// Check for test patterns in snippets
@@ -328,7 +328,7 @@ func isLikelyFalsePositive(f Finding) bool {
 	}
 
 	// Filter out common false positive patterns for high entropy strings
-	if f.RuleID == "SECRET_HIGH_ENTROPY" {
+	if f.ID == "SECRET_HIGH_ENTROPY" {
 		falsePositivePatterns := []string{
 			"expected", "want", "got", "assert", "test", "example",
 			"lorem", "ipsum", "placeholder", "template", "schema",
@@ -371,7 +371,7 @@ func deduplicateFindings(findings []Finding) []Finding {
 
 	for _, f := range findings {
 		// Create a key based on rule + file + general location
-		key := fmt.Sprintf("%s:%s", f.RuleID, f.File)
+		key := fmt.Sprintf("%s:%s", f.ID, f.File)
 
 		if !seen[key] {
 			seen[key] = true
@@ -392,7 +392,7 @@ func prepareOptimizedFindingsSummary(findings []Finding) string {
 		if bySeverity[f.Severity] == nil {
 			bySeverity[f.Severity] = make(map[string][]Finding)
 		}
-		bySeverity[f.Severity][f.RuleID] = append(bySeverity[f.Severity][f.RuleID], f)
+		bySeverity[f.Severity][f.ID] = append(bySeverity[f.Severity][f.ID], f)
 	}
 
 	// Output in priority order with compact format
@@ -456,7 +456,7 @@ func reduceFindingsForContext(findings []Finding, maxTokens int) []Finding {
 
 	for _, f := range findings {
 		// Estimate tokens for this finding
-		findingText := fmt.Sprintf("%s %s %s", f.RuleID, f.Title, f.File)
+		findingText := fmt.Sprintf("%s %s %s", f.ID, f.Title, f.File)
 		findingTokens := estimateTokenCount(findingText)
 
 		if currentSize+findingTokens > availableTokens {

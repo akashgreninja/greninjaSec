@@ -81,7 +81,7 @@ func scanTerraform(filePath string) []Finding {
 			result.RuleID)
 
 		f := Finding{
-			RuleID:   "TFSEC_" + result.RuleID,
+			ID:       "TFSEC_" + result.RuleID,
 			Title:    result.RuleDescription,
 			Severity: severity,
 			File:     result.Location.Filename,

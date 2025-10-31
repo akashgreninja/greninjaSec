@@ -24,6 +24,7 @@ var (
 	scanAll             bool
 	analyzeChains       bool
 	aiEnhance           bool
+	aiRemediation       bool
 	verbose             bool
 	Version             = "dev" // Set via ldflags during build
 	rootCmd        = &cobra.Command{
@@ -79,6 +80,7 @@ Examples:
 				ScanVulnerabilities: scanVulnerabilities,
 				AnalyzeChains:       analyzeChains,
 				AIEnhance:           aiEnhance,
+				AIRemediation:       aiRemediation,
 			}
 
 			// If --all is specified, enable everything
@@ -108,6 +110,14 @@ Examples:
 					return err
 				}
 
+				// Enrich findings with AI remediation if requested
+				if opts.AIRemediation {
+					result.Findings, err = s.EnrichFindingsWithAI(result.Findings)
+					if err != nil {
+						fmt.Fprintf(os.Stderr, "⚠️  AI remediation failed: %v\n", err)
+					}
+				}
+
 				if format == "json" {
 					return printResultJSON(result)
 				}
@@ -130,6 +140,14 @@ Examples:
 			findings, err := s.ScanWithOptions(targetPath, opts)
 			if err != nil {
 				return err
+			}
+
+			// Enrich findings with AI remediation if requested
+			if opts.AIRemediation {
+				findings, err = s.EnrichFindingsWithAI(findings)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "⚠️  AI remediation failed: %v\n", err)
+				}
 			}
 
 			if format == "json" {
@@ -212,7 +230,7 @@ func printFindings(header string, findings []scanner.Finding) {
 
 	for i := 0; i < limit; i++ {
 		f := findings[i]
-		fmt.Printf("[%d] %s - %s\n", i+1, f.RuleID, f.Title)
+		fmt.Printf("[%d] %s - %s\n", i+1, f.ID, f.Title)
 		fmt.Printf("    File: %s\n", f.File)
 
 		// Truncate long snippets
@@ -256,6 +274,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles + terraform + vulnerabilities)")
 	rootCmd.Flags().BoolVarP(&analyzeChains, "attack-chains", "c", false, "Analyze attack chains (correlate findings into exploit paths)")
 	rootCmd.Flags().BoolVarP(&aiEnhance, "ai-enhance", "", false, "Use AI to discover additional attack chains (requires .env with OPENWEBUI_URL and OPENWEBUI_TOKEN)")
+	rootCmd.Flags().BoolVarP(&aiRemediation, "ai-remediation", "", false, "Get AI-powered fix suggestions for CRITICAL/HIGH findings (requires .env)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all findings (default: summary only)")
 }
 

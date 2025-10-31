@@ -127,7 +127,7 @@ func (s *Scanner) scanFilesystemVulnerabilities(trivyPath, path string) ([]Findi
 			severity := mapTrivySeverity(vuln.Severity)
 
 			findings = append(findings, Finding{
-				RuleID:   fmt.Sprintf("CVE_%s", vuln.VulnerabilityID),
+				ID:   fmt.Sprintf("CVE_%s", vuln.VulnerabilityID),
 				Title:    fmt.Sprintf("%s - %s", vuln.VulnerabilityID, truncate(vuln.Title, 80)),
 				Severity: severity,
 				File:     target.Target,
@@ -202,7 +202,7 @@ func (s *Scanner) scanDockerImagesForVulnerabilities(trivyPath, path string) ([]
 					)
 
 					findings = append(findings, Finding{
-						RuleID:   fmt.Sprintf("CVE_IMAGE_%s", vuln.VulnerabilityID),
+						ID:   fmt.Sprintf("CVE_IMAGE_%s", vuln.VulnerabilityID),
 						Title:    fmt.Sprintf("Container Image: %s - %s", vuln.VulnerabilityID, truncate(vuln.Title, 60)),
 						Severity: mapTrivySeverity(vuln.Severity),
 						File:     dockerfile,
