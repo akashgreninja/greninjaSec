@@ -54,7 +54,33 @@ greninjasec --all --format json --path .
 
 # Verbose output (show all findings)
 greninjasec --all --attack-chains --verbose --path examples/
+
+# Generate HTML report with visualizations
+greninjasec --all --attack-chains --html security-report.html --path .
 ```
+
+### Pre-commit Hooks
+
+Install a Git pre-commit hook that automatically scans your code before commits and blocks commits with CRITICAL findings:
+
+```bash
+# Install the hook (blocks CRITICAL findings)
+greninjasec install-hooks
+
+# Install with warnings only (don't block)
+greninjasec install-hooks --allow-critical
+
+# Uninstall the hook
+greninjasec uninstall-hooks
+
+# Bypass the hook for a single commit
+git commit --no-verify -m "commit message"
+```
+
+**Security Policy:**
+- 🔴 CRITICAL: Blocked (unless `--allow-critical`)
+- 🟠 HIGH: Warning only
+- 🟡 MEDIUM/LOW: Info only
 
 ---
 
