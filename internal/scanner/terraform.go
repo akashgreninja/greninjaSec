@@ -11,10 +11,10 @@ import (
 
 // TfsecResult represents a single tfsec finding
 type TfsecResult struct {
-	RuleID          string `json:"rule_id"`
-	LongID          string `json:"long_id"`
-	RuleDescription string `json:"rule_description"`
-	RuleProvider    string `json:"rule_provider"`
+	RuleID          string   `json:"rule_id"`
+	LongID          string   `json:"long_id"`
+	RuleDescription string   `json:"rule_description"`
+	RuleProvider    string   `json:"rule_provider"`
 	Links           []string `json:"links"`
 	Location        struct {
 		Filename  string `json:"filename"`

@@ -27,6 +27,14 @@ type ScanOptions struct {
 	ScanSecrets    bool // Scan for hardcoded secrets
 	ScanDockerfile bool // Scan Dockerfiles
 	ScanTerraform  bool // Scan Terraform files
+	AnalyzeChains  bool // Analyze attack chains
+	AIEnhance      bool // Use AI for enhanced attack chain analysis
+}
+
+// ScanResult contains findings and optional attack chain analysis
+type ScanResult struct {
+	Findings     []Finding     `json:"findings"`
+	AttackChains []AttackChain `json:"attack_chains,omitempty"`
 }
 
 // Scanner is a minimal repo scanner.
@@ -123,6 +131,40 @@ func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, err
 	})
 
 	return findings, err
+}
+
+// ScanWithAttackChains performs a full scan and optionally analyzes attack chains
+func (s *Scanner) ScanWithAttackChains(path string, opts ScanOptions) (ScanResult, error) {
+	// First, run normal scan
+	findings, err := s.ScanWithOptions(path, opts)
+	if err != nil {
+		return ScanResult{Findings: findings}, err
+	}
+
+	result := ScanResult{
+		Findings: findings,
+	}
+
+	// If attack chain analysis is enabled
+	if opts.AnalyzeChains {
+		// Run rule-based attack chain analysis
+		chains := AnalyzeAttackChains(findings)
+
+		// If AI enhancement is enabled, use it
+		if opts.AIEnhance {
+			aiChains, err := AIEnhancedChainAnalysis(findings, chains)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "⚠️  AI enhancement failed: %v\n", err)
+				result.AttackChains = chains // Fall back to rule-based only
+			} else {
+				result.AttackChains = aiChains
+			}
+		} else {
+			result.AttackChains = chains
+		}
+	}
+
+	return result, nil
 }
 
 // ----------------------------------------
