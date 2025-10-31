@@ -725,3 +725,148 @@ body {
         gap: 0.5rem;
     }
 }
+
+/* AI Remediation Styles */
+.ai-remediation {
+    margin-top: 1rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-left: 4px solid #28a745;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.ai-header h4 {
+    color: #28a745;
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.confidence-score {
+    background: #28a745;
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.ai-content {
+    display: grid;
+    gap: 1rem;
+}
+
+.ai-section {
+    background: white;
+    padding: 1rem;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.ai-section h5 {
+    color: #495057;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ai-section p {
+    color: #6c757d;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.code-patch {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    color: #495057;
+}
+
+.command-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.command-list li {
+    margin-bottom: 0.5rem;
+}
+
+.command-list code {
+    background: #343a40;
+    color: #f8f9fa;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    display: block;
+    overflow-x: auto;
+}
+
+.manual-steps, .testing-steps {
+    padding-left: 1.5rem;
+    color: #6c757d;
+    line-height: 1.6;
+}
+
+.manual-steps li, .testing-steps li {
+    margin-bottom: 0.5rem;
+}
+
+.references {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.references li {
+    margin-bottom: 0.5rem;
+}
+
+.references a {
+    color: #007bff;
+    text-decoration: none;
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+
+.references a:hover {
+    text-decoration: underline;
+}
+
+/* Responsive AI Remediation */
+@media (max-width: 768px) {
+    .ai-remediation {
+        margin: 1rem -1rem 0 -1rem;
+        border-radius: 0;
+    }
+    
+    .ai-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .confidence-score {
+        align-self: flex-end;
+    }
+}

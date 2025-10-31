@@ -384,6 +384,76 @@
                     {{if .Snippet}}
                     <div class="code-snippet">{{.Snippet}}</div>
                     {{end}}
+                    {{if .AIRemediation}}
+                    <div class="ai-remediation">
+                        <div class="ai-header">
+                            <h4>🤖 AI-Powered Remediation</h4>
+                            <span class="confidence-score">Confidence: {{printf "%.0f" .AIRemediation.ConfidenceScore}}%</span>
+                        </div>
+                        <div class="ai-content">
+                            <div class="ai-section">
+                                <h5>📋 Summary</h5>
+                                <p>{{.AIRemediation.Summary}}</p>
+                            </div>
+                            <div class="ai-section">
+                                <h5>🔍 Risk Analysis</h5>
+                                <p>{{.AIRemediation.RiskAnalysis}}</p>
+                            </div>
+                            {{if .AIRemediation.CodePatch}}
+                            <div class="ai-section">
+                                <h5>🔧 Code Patch</h5>
+                                <pre class="code-patch">{{.AIRemediation.CodePatch}}</pre>
+                            </div>
+                            {{end}}
+                            {{if .AIRemediation.Commands}}
+                            <div class="ai-section">
+                                <h5>💻 Commands</h5>
+                                <ul class="command-list">
+                                {{range .AIRemediation.Commands}}
+                                <li><code>{{.}}</code></li>
+                                {{end}}
+                                </ul>
+                            </div>
+                            {{end}}
+                            {{if .AIRemediation.ManualSteps}}
+                            <div class="ai-section">
+                                <h5>✋ Manual Steps</h5>
+                                <ol class="manual-steps">
+                                {{range .AIRemediation.ManualSteps}}
+                                <li>{{.}}</li>
+                                {{end}}
+                                </ol>
+                            </div>
+                            {{end}}
+                            {{if .AIRemediation.AlternateFix}}
+                            <div class="ai-section">
+                                <h5>🔄 Alternative Solution</h5>
+                                <p>{{.AIRemediation.AlternateFix}}</p>
+                            </div>
+                            {{end}}
+                            {{if .AIRemediation.TestingSteps}}
+                            <div class="ai-section">
+                                <h5>🧪 Testing Steps</h5>
+                                <ol class="testing-steps">
+                                {{range .AIRemediation.TestingSteps}}
+                                <li>{{.}}</li>
+                                {{end}}
+                                </ol>
+                            </div>
+                            {{end}}
+                            {{if .AIRemediation.References}}
+                            <div class="ai-section">
+                                <h5>📚 References</h5>
+                                <ul class="references">
+                                {{range .AIRemediation.References}}
+                                <li><a href="{{.}}" target="_blank">{{.}}</a></li>
+                                {{end}}
+                                </ul>
+                            </div>
+                            {{end}}
+                        </div>
+                    </div>
+                    {{end}}
                 </div>
                 {{end}}
                 {{end}}

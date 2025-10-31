@@ -15,6 +15,7 @@ import (
 // Finding represents a single security issue discovered
 type Finding struct {
 	ID       string `json:"id"`
+	RuleID   string `json:"rule_id,omitempty"`  // Rule/Check ID for template compatibility
 	Title    string `json:"title"`
 	Severity string `json:"severity"`
 	Message  string `json:"message"`
@@ -148,7 +149,8 @@ func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, err
 			// --- Custom rule: missing runAsNonRoot ---
 			if matchesMissingRunAsNonRoot(doc) {
 				f := Finding{
-					ID:   "R001",
+					ID:       "R001",
+					RuleID:   "R001",
 					Title:    "Container missing runAsNonRoot",
 					Severity: "HIGH",
 					File:     p,
@@ -259,7 +261,8 @@ func runKubesecIntegration(filePath string) []Finding {
 	// Convert Kubesec critical findings
 	for _, c := range res.Scoring.Critical {
 		f := Finding{
-			ID:   "KUBESEC_CRITICAL_" + c.ID,
+			ID:       "KUBESEC_CRITICAL_" + c.ID,
+			RuleID:   "KUBESEC_CRITICAL_" + c.ID,
 			Title:    c.Reason,
 			Severity: "CRITICAL",
 			File:     filePath,
@@ -274,7 +277,8 @@ func runKubesecIntegration(filePath string) []Finding {
 			break
 		}
 		f := Finding{
-			ID:   "KUBESEC_" + a.ID,
+			ID:       "KUBESEC_" + a.ID,
+			RuleID:   "KUBESEC_" + a.ID,
 			Title:    a.Reason,
 			Severity: "MEDIUM",
 			File:     filePath,

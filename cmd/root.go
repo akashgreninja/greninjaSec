@@ -150,6 +150,22 @@ Examples:
 				}
 			}
 
+			// Generate HTML report if requested (for simple scans)
+			if htmlOutput != "" {
+				// Convert findings to ScanResult for HTML generation
+				result := scanner.ScanResult{
+					Findings:     findings,
+					AttackChains: []scanner.AttackChain{}, // No attack chains for simple scans
+				}
+				if err := scanner.GenerateHTMLReportV2(result, htmlOutput); err != nil {
+					return fmt.Errorf("failed to generate HTML report: %w", err)
+				}
+				fmt.Printf("✅ HTML report generated: %s\n", htmlOutput)
+				if format != "pretty" {
+					return nil // Don't print to console if HTML only
+				}
+			}
+
 			if format == "json" {
 				return scanner.PrintJSON(findings)
 			}

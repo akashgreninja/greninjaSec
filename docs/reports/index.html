@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreninjaSec AI Remediation Reports</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+        .report-card {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .report-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #28a745;
+            margin-bottom: 0.5rem;
+        }
+        .report-description {
+            color: #6c757d;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .report-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .feature-badge {
+            background: #e9ecef;
+            color: #495057;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.9rem;
+        }
+        .view-button {
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        .view-button:hover {
+            background: #218838;
+        }
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥷 GreninjaSec AI Remediation Reports</h1>
+        <p class="subtitle">Live demonstrations of AI-powered security vulnerability remediation</p>
+        
+        <div class="ai-badge">🤖 Powered by F5 AI (gpt-4.1)</div>
+        
+        <div class="report-card">
+            <div class="report-title">🔐 AI Secrets Remediation Demo</div>
+            <div class="report-description">
+                Comprehensive AI analysis of hardcoded secrets with detailed remediation steps. 
+                Shows how AI generates specific fixes for AWS keys, GitHub tokens, API keys, and private keys.
+            </div>
+            <div class="report-features">
+                <span class="feature-badge">5 Secret Findings</span>
+                <span class="feature-badge">95-98% Confidence</span>
+                <span class="feature-badge">Code Patches</span>
+                <span class="feature-badge">CLI Commands</span>
+                <span class="feature-badge">Testing Steps</span>
+            </div>
+            <a href="ai-secrets-demo.html" class="view-button">View AI Secrets Report →</a>
+        </div>
+        
+        <div class="report-card">
+            <div class="report-title">🎯 AI Comprehensive Security Demo</div>
+            <div class="report-description">
+                Full-scale security analysis with 90+ vulnerabilities, attack chain correlation, 
+                and AI-powered remediation suggestions. Includes CVE analysis, Terraform issues, and infrastructure security.
+            </div>
+            <div class="report-features">
+                <span class="feature-badge">90+ Findings</span>
+                <span class="feature-badge">5 Attack Chains</span>
+                <span class="feature-badge">CVE Analysis</span>
+                <span class="feature-badge">Terraform Security</span>
+                <span class="feature-badge">Container Scanning</span>
+            </div>
+            <a href="ai-comprehensive-demo.html" class="view-button">View Comprehensive Report →</a>
+        </div>
+        
+        <div style="text-align: center; margin-top: 2rem; color: #6c757d;">
+            <p>Generated with <strong>GreninjaSec --ai-remediation --html</strong></p>
+            <p><a href="https://github.com/akashgreninja/greninjaSec" style="color: #007bff;">🔗 View on GitHub</a></p>
+        </div>
+    </div>
+</body>
+</html>
