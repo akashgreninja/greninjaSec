@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"greninjaSec/internal/scanner"
+	"greninjaSec/internal/shadow"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
@@ -27,6 +28,7 @@ var (
 	aiRemediation       bool
 	deepScan            bool
 	scanLeaks           bool
+	shadowDeploy        bool
 	verbose             bool
 	Version             = "dev" // Set via ldflags during build
 	rootCmd        = &cobra.Command{
@@ -212,6 +214,13 @@ Examples:
 				}
 			}
 
+			// Run Shadow Deploy simulation if requested
+			if shadowDeploy {
+				if err := runShadowDeploy(targetPath, findings); err != nil {
+					fmt.Fprintf(os.Stderr, "⚠️  Shadow Deploy simulation failed: %v\n", err)
+				}
+			}
+
 			// Enrich findings with AI remediation if requested
 			if opts.AIRemediation {
 				findings, err = s.EnrichFindingsWithAI(findings)
@@ -363,6 +372,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&aiRemediation, "ai-remediation", "", false, "Get AI-powered fix suggestions for CRITICAL/HIGH findings (requires .env)")
 	rootCmd.Flags().BoolVarP(&deepScan, "deep-scan", "", false, "Scan entire Git history for exposed secrets (not just current files)")
 	rootCmd.Flags().BoolVarP(&scanLeaks, "leaks", "", false, "Scan for memory/resource leaks and CPU issues (Go files only)")
+	rootCmd.Flags().BoolVarP(&shadowDeploy, "shadow-deploy", "", false, "🎭 Simulate real attacks to demonstrate exploit paths (safe dry-run)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all findings (default: summary only)")
 }
 
@@ -585,4 +595,137 @@ func getSeverityIcon(severity string) string {
 	default:
 		return "•"
 	}
+}
+
+// runShadowDeploy executes the Shadow Deploy simulation
+func runShadowDeploy(targetPath string, findings []scanner.Finding) error {
+	// Convert findings to vulnerabilities for shadow simulator
+	vulns := findingsToVulnerabilities(findings)
+	
+	if len(vulns) == 0 {
+		fmt.Println("\n✅ No exploitable vulnerabilities found for simulation")
+		return nil
+	}
+	
+	// Determine target type based on path/findings
+	targetType := determineTargetType(targetPath, findings)
+	
+	// Create simulator with config
+	config := shadow.SimulationConfig{
+		DryRun:         true, // Always dry-run for safety
+		Verbose:        verbose,
+		Isolated:       false,
+		StopOnFailure:  false,
+		GenerateReport: true,
+		ReportFormat:   "html",
+	}
+	
+	sim := shadow.NewSimulator(config)
+	
+	// Enable AI enhancement if AI remediation is enabled
+	if aiRemediation || aiEnhance {
+		// Load .env for AI credentials
+		_ = godotenv.Load()
+		
+		aiConfig, err := scanner.LoadAIConfigForShadow()
+		if err == nil && aiConfig.Enabled {
+			aiClient := scanner.CreateAIClient(aiConfig)
+			if aiClient != nil {
+				enhancer := shadow.NewAIExploitEnhancer(aiClient)
+				sim.SetAIEnhancer(enhancer)
+				fmt.Println("🤖 AI-powered exploit enhancement enabled")
+			}
+		} else {
+			fmt.Println("⚠️  AI enhancement requested but not configured (check .env)")
+		}
+	}
+	
+	// Run the simulation
+	result, err := sim.Run(targetPath, targetType, vulns)
+	if err != nil {
+		return fmt.Errorf("simulation failed: %w", err)
+	}
+	
+	// Result is already printed by simulator
+	_ = result
+	
+	return nil
+}
+
+// findingsToVulnerabilities converts scanner findings to shadow vulnerabilities
+func findingsToVulnerabilities(findings []scanner.Finding) []shadow.Vulnerability {
+	vulns := []shadow.Vulnerability{}
+	
+	for _, f := range findings {
+		vuln := shadow.Vulnerability{
+			ID:          f.ID,
+			Type:        mapFindingToVulnType(f),
+			Severity:    f.Severity,
+			CVSSScore:   0, // TODO: Parse from finding if available
+			Description: f.Title,
+			File:        f.File,
+			Exploitable: false, // Will be determined by simulator
+		}
+		vulns = append(vulns, vuln)
+	}
+	
+	return vulns
+}
+
+// mapFindingToVulnType maps finding IDs to vulnerability types
+func mapFindingToVulnType(finding scanner.Finding) string {
+	// Map Kubesec/scanner findings to exploit types
+	idLower := strings.ToLower(finding.ID)
+	titleLower := strings.ToLower(finding.Title)
+	
+	if strings.Contains(idLower, "privileged") || strings.Contains(titleLower, "privileged") {
+		return "privileged_container"
+	}
+	if strings.Contains(idLower, "hostpath") || strings.Contains(titleLower, "hostpath") {
+		return "hostpath_mount"
+	}
+	if strings.Contains(idLower, "hostnetwork") || strings.Contains(titleLower, "host network") {
+		return "host_network"
+	}
+	if strings.Contains(idLower, "hostpid") || strings.Contains(titleLower, "host pid") {
+		return "host_pid"
+	}
+	if strings.Contains(idLower, "hostipc") || strings.Contains(titleLower, "host ipc") {
+		return "host_ipc"
+	}
+	if strings.Contains(idLower, "docker") && strings.Contains(idLower, "sock") {
+		return "docker_socket_mount"
+	}
+	if strings.Contains(idLower, "aws") || strings.Contains(titleLower, "aws") {
+		return "aws_credentials_exposed"
+	}
+	if strings.Contains(idLower, "secret") || strings.Contains(titleLower, "secret") {
+		return "exposed_secrets"
+	}
+	if strings.Contains(idLower, "rbac") {
+		return "weak_rbac"
+	}
+	if strings.Contains(idLower, "s3") && strings.Contains(titleLower, "public") {
+		return "public_s3_bucket"
+	}
+	
+	return "other"
+}
+
+// determineTargetType figures out what we're scanning
+func determineTargetType(path string, findings []scanner.Finding) string {
+	// Check findings for clues
+	for _, f := range findings {
+		if strings.Contains(strings.ToLower(f.File), ".yaml") || strings.Contains(strings.ToLower(f.File), ".yml") {
+			return "kubernetes"
+		}
+		if strings.Contains(strings.ToLower(f.File), "dockerfile") {
+			return "docker"
+		}
+		if strings.Contains(strings.ToLower(f.File), ".tf") {
+			return "terraform"
+		}
+	}
+	
+	return "general"
 }

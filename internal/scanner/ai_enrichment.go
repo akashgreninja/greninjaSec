@@ -7,6 +7,16 @@ import (
 	"strings"
 )
 
+// LoadAIConfigForShadow loads AI config for shadow deploy
+func LoadAIConfigForShadow() (*ai.Config, error) {
+	return ai.LoadConfig()
+}
+
+// CreateAIClient creates an AI client
+func CreateAIClient(config *ai.Config) *ai.Client {
+	return ai.NewClient(config)
+}
+
 // EnrichFindingsWithAI adds AI-powered remediation to findings
 func (s *Scanner) EnrichFindingsWithAI(findings []Finding) ([]Finding, error) {
 	// Load AI config
