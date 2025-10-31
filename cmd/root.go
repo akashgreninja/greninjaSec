@@ -22,6 +22,7 @@ var (
 	scanAll        bool
 	analyzeChains  bool
 	aiEnhance      bool
+	verbose        bool
 	rootCmd        = &cobra.Command{
 		Use:   "greninjasec",
 		Short: "GreninjaSec - Kubernetes & Infrastructure Security Scanner",
@@ -178,10 +179,29 @@ func printFindings(header string, findings []scanner.Finding) {
 
 	fmt.Printf("%s (%d)\n", header, len(findings))
 	fmt.Printf("─────────────────────────────────────────────────────────\n")
-	for i, f := range findings {
+	
+	// In non-verbose mode, show only top 3 findings per severity
+	limit := len(findings)
+	if !verbose && limit > 3 {
+		limit = 3
+	}
+	
+	for i := 0; i < limit; i++ {
+		f := findings[i]
 		fmt.Printf("[%d] %s - %s\n", i+1, f.RuleID, f.Title)
 		fmt.Printf("    File: %s\n", f.File)
-		fmt.Printf("    Snippet: %s\n\n", f.Snippet)
+		
+		// Truncate long snippets
+		snippet := f.Snippet
+		if len(snippet) > 100 && !verbose {
+			snippet = snippet[:100] + "..."
+		}
+		fmt.Printf("    Snippet: %s\n\n", snippet)
+	}
+	
+	// Show count of hidden findings
+	if !verbose && len(findings) > 3 {
+		fmt.Printf("    ... and %d more %s findings (use --verbose to see all)\n\n", len(findings)-3, strings.ToLower(header))
 	}
 }
 
@@ -198,6 +218,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles + terraform)")
 	rootCmd.Flags().BoolVarP(&analyzeChains, "attack-chains", "c", false, "Analyze attack chains (correlate findings into exploit paths)")
 	rootCmd.Flags().BoolVarP(&aiEnhance, "ai-enhance", "", false, "Use AI to discover additional attack chains (requires .env with OPENWEBUI_URL and OPENWEBUI_TOKEN)")
+	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all findings (default: summary only)")
 }
 
 func Execute() {
@@ -285,6 +306,50 @@ func printResultPretty(result scanner.ScanResult, opts scanner.ScanOptions) erro
 	printFindings("🟡 MEDIUM", medium)
 	printFindings("🟢 LOW", low)
 
+	// Print summary with actionable recommendations
+	if !verbose {
+		fmt.Printf("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		fmt.Printf("📊 SUMMARY\n")
+		fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+		
+		totalIssues := len(critical) + len(high) + len(medium) + len(low)
+		fmt.Printf("Total Issues: %d\n", totalIssues)
+		fmt.Printf("  🔴 Critical: %d\n", len(critical))
+		fmt.Printf("  🟠 High: %d\n", len(high))
+		fmt.Printf("  🟡 Medium: %d\n", len(medium))
+		fmt.Printf("  🟢 Low: %d\n\n", len(low))
+		
+		if len(result.AttackChains) > 0 {
+			fmt.Printf("Attack Chains: %d\n", len(result.AttackChains))
+			criticalChains := 0
+			for _, c := range result.AttackChains {
+				if c.Severity == "CRITICAL" {
+					criticalChains++
+				}
+			}
+			if criticalChains > 0 {
+				fmt.Printf("  💀 Critical Attack Paths: %d\n", criticalChains)
+			}
+			fmt.Printf("\n")
+		}
+		
+		// Priority recommendations
+		if len(critical) > 0 || len(high) > 0 {
+			fmt.Printf("🎯 PRIORITY ACTIONS:\n")
+			if len(critical) > 0 {
+				fmt.Printf("  1. Fix %d CRITICAL issues immediately\n", len(critical))
+			}
+			if len(high) > 0 {
+				fmt.Printf("  2. Address %d HIGH severity issues\n", len(high))
+			}
+			if len(result.AttackChains) > 0 {
+				fmt.Printf("  3. Review attack chains to understand exploit paths\n")
+			}
+			fmt.Printf("\n💡 Use --verbose flag to see all details\n")
+			fmt.Printf("💡 Use --format json for machine-readable output\n")
+		}
+	}
+
 	return nil
 }
 
@@ -293,36 +358,68 @@ func printAttackChains(chains []scanner.AttackChain) {
 	fmt.Printf("🥷 ATTACK CHAINS - Correlated Exploit Paths\n")
 	fmt.Printf("═══════════════════════════════════════════════════════════\n\n")
 
-	for i, chain := range chains {
+	// In non-verbose mode, show only top 3 chains
+	limit := len(chains)
+	if !verbose && limit > 3 {
+		limit = 3
+	}
+
+	for i := 0; i < limit; i++ {
+		chain := chains[i]
 		// Print chain header
 		severityIcon := getSeverityIcon(chain.Severity)
 		fmt.Printf("[%d] %s %s\n", i+1, severityIcon, chain.Name)
-		fmt.Printf("    ID: %s\n", chain.ID)
-		fmt.Printf("    Severity: %s | Likelihood: %s\n", chain.Severity, chain.Likelihood)
+		fmt.Printf("    ID: %s | Severity: %s | Likelihood: %s\n", chain.ID, chain.Severity, chain.Likelihood)
 		fmt.Printf("    Impact: %s\n", chain.Impact)
+		fmt.Printf("    Affected Findings: %d\n", len(chain.Findings))
 		fmt.Printf("\n")
 
-		// Print attack steps
-		fmt.Printf("    Attack Steps:\n")
-		for _, step := range chain.Steps {
-			fmt.Printf("      %d. %s\n", step.Step, step.Description)
-			fmt.Printf("         └─ Finding: %s\n", step.FindingID)
+		// Print attack steps (limit to 5 in non-verbose mode)
+		stepLimit := len(chain.Steps)
+		if !verbose && stepLimit > 5 {
+			stepLimit = 5
 		}
-		fmt.Printf("\n")
-
-		// Print remediation
-		fmt.Printf("    🔧 Remediation:\n")
-		remLines := strings.Split(chain.Remediation, "\n")
-		for _, line := range remLines {
-			if line != "" {
-				fmt.Printf("       %s\n", line)
+		
+		fmt.Printf("    Attack Steps:\n")
+		for j := 0; j < stepLimit; j++ {
+			step := chain.Steps[j]
+			fmt.Printf("      %d. %s\n", step.Step, step.Description)
+			if verbose {
+				fmt.Printf("         └─ Finding: %s\n", step.FindingID)
 			}
 		}
+		
+		if !verbose && len(chain.Steps) > 5 {
+			fmt.Printf("      ... %d more steps (use --verbose to see all)\n", len(chain.Steps)-5)
+		}
 		fmt.Printf("\n")
 
-		if i < len(chains)-1 {
+		// Print remediation (first 3 lines only in non-verbose mode)
+		fmt.Printf("    🔧 Key Remediation:\n")
+		remLines := strings.Split(chain.Remediation, "\n")
+		remLimit := len(remLines)
+		if !verbose && remLimit > 3 {
+			remLimit = 3
+		}
+		
+		for j := 0; j < remLimit; j++ {
+			if remLines[j] != "" {
+				fmt.Printf("       %s\n", remLines[j])
+			}
+		}
+		
+		if !verbose && len(remLines) > 3 {
+			fmt.Printf("       ... (use --verbose for complete remediation steps)\n")
+		}
+		fmt.Printf("\n")
+
+		if i < limit-1 {
 			fmt.Printf("    ───────────────────────────────────────────────────\n\n")
 		}
+	}
+	
+	if !verbose && len(chains) > 3 {
+		fmt.Printf("\n    💡 Showing top 3 attack chains (total: %d). Use --verbose to see all.\n", len(chains))
 	}
 }
 
