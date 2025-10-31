@@ -25,6 +25,7 @@ var (
 	analyzeChains       bool
 	aiEnhance           bool
 	aiRemediation       bool
+	deepScan            bool
 	verbose             bool
 	Version             = "dev" // Set via ldflags during build
 	rootCmd        = &cobra.Command{
@@ -140,6 +141,48 @@ Examples:
 			findings, err := s.ScanWithOptions(targetPath, opts)
 			if err != nil {
 				return err
+			}
+
+			// Deep scan Git history if requested
+			var gitSecrets []scanner.GitSecretFinding
+			if deepScan {
+				gitSecrets, err = scanner.ScanGitHistory(targetPath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "⚠️  Deep scan failed: %v\n", err)
+				} else if len(gitSecrets) > 0 {
+					// Convert GitSecretFindings to regular Findings
+					for _, gs := range gitSecrets {
+						severity := "HIGH"
+						if gs.StillInRepo {
+							severity = "CRITICAL" // Still exposed = critical
+						}
+						if gs.IsStillActive {
+							severity = "CRITICAL" // Active secret = critical
+						}
+
+						message := fmt.Sprintf("Found in Git history | Commit: %s | Author: %s | Days exposed: %d | Still in repo: %v",
+							gs.CommitHash[:8], gs.Author, gs.DaysExposed, gs.StillInRepo)
+
+						finding := scanner.Finding{
+							ID:       "GIT_HISTORY_" + gs.SecretType,
+							Title:    fmt.Sprintf("%s exposed in Git history", gs.SecretType),
+							Severity: severity,
+							Message:  message,
+							File:     gs.FilePath,
+							Snippet:  fmt.Sprintf("Secret: %s | Commit: %s (%s)", gs.SecretValue, gs.CommitHash[:8], gs.Date.Format("2006-01-02")),
+						}
+						findings = append(findings, finding)
+					}
+
+					// Print cleanup commands
+					fmt.Fprintf(os.Stderr, "\n🧹 Git History Cleanup Commands:\n")
+					fmt.Fprintf(os.Stderr, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+					cleanupCmds := scanner.GenerateGitCleanupCommands(gitSecrets)
+					for _, cmd := range cleanupCmds {
+						fmt.Fprintf(os.Stderr, "%s\n", cmd)
+					}
+					fmt.Fprintf(os.Stderr, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+				}
 			}
 
 			// Enrich findings with AI remediation if requested
@@ -291,6 +334,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&analyzeChains, "attack-chains", "c", false, "Analyze attack chains (correlate findings into exploit paths)")
 	rootCmd.Flags().BoolVarP(&aiEnhance, "ai-enhance", "", false, "Use AI to discover additional attack chains (requires .env with OPENWEBUI_URL and OPENWEBUI_TOKEN)")
 	rootCmd.Flags().BoolVarP(&aiRemediation, "ai-remediation", "", false, "Get AI-powered fix suggestions for CRITICAL/HIGH findings (requires .env)")
+	rootCmd.Flags().BoolVarP(&deepScan, "deep-scan", "", false, "Scan entire Git history for exposed secrets (not just current files)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all findings (default: summary only)")
 }
 
