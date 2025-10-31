@@ -15,6 +15,7 @@ import (
 var (
 	targetPath     string
 	format         string
+	htmlOutput     string
 	scanManifests  bool
 	scanSecrets    bool
 	scanDockerfile bool
@@ -101,6 +102,17 @@ Examples:
 
 				if format == "json" {
 					return printResultJSON(result)
+				}
+
+				// Generate HTML report if requested
+				if htmlOutput != "" {
+					if err := scanner.GenerateHTMLReport(result, htmlOutput); err != nil {
+						return fmt.Errorf("failed to generate HTML report: %w", err)
+					}
+					fmt.Printf("✅ HTML report generated: %s\n", htmlOutput)
+					if format != "pretty" {
+						return nil // Don't print to console if HTML only
+					}
 				}
 
 				return printResultPretty(result, opts)
@@ -224,6 +236,7 @@ func init() {
 
 	rootCmd.Flags().StringVarP(&targetPath, "path", "p", ".", "Path to scan (defaults to current directory)")
 	rootCmd.Flags().StringVarP(&format, "format", "f", "pretty", "Output format: pretty|json")
+	rootCmd.Flags().StringVar(&htmlOutput, "html", "", "Generate HTML report (e.g., --html report.html)")
 	rootCmd.Flags().BoolVarP(&scanManifests, "manifest", "m", false, "Scan Kubernetes manifests for misconfigurations")
 	rootCmd.Flags().BoolVarP(&scanSecrets, "secrets", "s", false, "Scan for hardcoded secrets and credentials")
 	rootCmd.Flags().BoolVarP(&scanDockerfile, "dockerfile", "d", false, "Scan Dockerfiles with hadolint (50+ checks)")
