@@ -54,9 +54,92 @@
                 <h3>📊 Scan Summary</h3>
                 <p>{{.ScanSummary}}</p>
             </div>
+
+            <!-- Quick Stats Grid -->
+            <div class="quick-stats">
+                {{if .CVEFindings}}
+                <div class="quick-stat-card cve">
+                    <div class="quick-stat-icon">🔍</div>
+                    <div class="quick-stat-number">{{.CVECount}}</div>
+                    <div class="quick-stat-label">CVE Vulnerabilities</div>
+                </div>
+                {{end}}
+                {{if .AttackChains}}
+                <div class="quick-stat-card chains">
+                    <div class="quick-stat-icon">🎯</div>
+                    <div class="quick-stat-number">{{len .AttackChains}}</div>
+                    <div class="quick-stat-label">Attack Chains</div>
+                </div>
+                {{end}}
+                <div class="quick-stat-card scanners">
+                    <div class="quick-stat-icon">🔧</div>
+                    <div class="quick-stat-number">5</div>
+                    <div class="quick-stat-label">Scanners Used</div>
+                </div>
+            </div>
+
+            <!-- Top Issues Preview -->
+            {{if index .FindingsBySev "CRITICAL"}}
+            <div class="section">
+                <h2 class="section-title">� Top Critical Issues</h2>
+                <div class="preview-findings">
+                    {{range $idx, $finding := index $.FindingsBySev "CRITICAL"}}
+                    {{if lt $idx 5}}
+                    <div class="preview-finding critical">
+                        <div class="preview-icon">🔴</div>
+                        <div class="preview-content">
+                            <div class="preview-title">{{$finding.Title}}</div>
+                            <div class="preview-file">📄 {{$finding.File}}</div>
+                        </div>
+                        <span class="severity-badge severity-critical">CRITICAL</span>
+                    </div>
+                    {{end}}
+                    {{end}}
+                    {{if gt (len (index $.FindingsBySev "CRITICAL")) 5}}
+                    <div class="preview-more">
+                        <a href="#" onclick="openTab(event, 'all-findings'); return false;">
+                            + {{sub (len (index $.FindingsBySev "CRITICAL")) 5}} more critical issues
+                        </a>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+
+            <!-- Attack Chains Preview -->
+            {{if .AttackChains}}
+            <div class="section">
+                <h2 class="section-title">⚡ Attack Chains Preview</h2>
+                <div class="preview-chains">
+                    {{range $idx, $chain := .AttackChains}}
+                    {{if lt $idx 3}}
+                    <div class="preview-chain">
+                        <div class="preview-chain-header">
+                            <span class="chain-icon">💀</span>
+                            <span class="chain-name">{{$chain.Name}}</span>
+                            <span class="risk-badge risk-{{lower $chain.Severity}}">{{$chain.Severity}}</span>
+                        </div>
+                        <div class="preview-chain-stats">
+                            <span>📍 {{len $chain.Steps}} steps</span>
+                            <span>⚠️ {{len $chain.Findings}} vulnerabilities</span>
+                            <span>🎲 {{$chain.Likelihood}} likelihood</span>
+                        </div>
+                    </div>
+                    {{end}}
+                    {{end}}
+                    {{if gt (len .AttackChains) 3}}
+                    <div class="preview-more">
+                        <a href="#" onclick="openTab(event, 'attack-chains'); return false;">
+                            View all {{len .AttackChains}} attack chains →
+                        </a>
+                    </div>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
             
             <div class="section">
-                <h2 class="section-title">📈 Security Metrics</h2>
+                <h2 class="section-title">�📈 Security Metrics</h2>
                 <div class="charts-grid">
                     <div class="chart-container">
                         <canvas id="severityChart"></canvas>
@@ -64,6 +147,37 @@
                     <div class="chart-container">
                         <canvas id="fileChart"></canvas>
                     </div>
+                </div>
+            </div>
+
+            <!-- Recommendations Box -->
+            <div class="recommendations-box">
+                <h3>🎯 Recommended Actions</h3>
+                <div class="recommendations-list">
+                    {{if gt .CriticalCount 0}}
+                    <div class="recommendation critical">
+                        <span class="rec-icon">🔴</span>
+                        <span class="rec-text">Address <strong>{{.CriticalCount}} critical vulnerabilities</strong> immediately</span>
+                    </div>
+                    {{end}}
+                    {{if gt .HighCount 0}}
+                    <div class="recommendation high">
+                        <span class="rec-icon">🟠</span>
+                        <span class="rec-text">Review <strong>{{.HighCount}} high severity issues</strong> this sprint</span>
+                    </div>
+                    {{end}}
+                    {{if .AttackChains}}
+                    <div class="recommendation chain">
+                        <span class="rec-icon">🎯</span>
+                        <span class="rec-text">Analyze <strong>{{len .AttackChains}} attack chains</strong> to understand exploit paths</span>
+                    </div>
+                    {{end}}
+                    {{if .CVEFindings}}
+                    <div class="recommendation cve">
+                        <span class="rec-icon">🔍</span>
+                        <span class="rec-text">Update dependencies to fix <strong>{{.CVECount}} CVE vulnerabilities</strong></span>
+                    </div>
+                    {{end}}
                 </div>
             </div>
         </div>
