@@ -1,11 +1,43 @@
 package shadow
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
+	"regexp"
 	
 	"greninjaSec/internal/ai"
 )
+
+// AIExploitTechnique represents an AI-discovered exploit technique
+type AIExploitTechnique struct {
+	Name             string            `json:"name"`
+	Vector           string            `json:"vector"`
+	Description      string            `json:"description"`
+	Steps            []AIExploitStep   `json:"steps"`
+	Impact           string            `json:"impact"`
+	MitreAttack      string            `json:"mitre_attack"`
+	WhyDangerous     string            `json:"why_dangerous"`
+	RealWorldExample string            `json:"real_world_example"`
+}
+
+// AIExploitStep represents a step in an AI-discovered attack
+type AIExploitStep struct {
+	Description string `json:"description"`
+	Command     string `json:"command"`
+	Impact      string `json:"impact"`
+}
+
+// AIDefenseRecommendation represents an AI-generated defense
+type AIDefenseRecommendation struct {
+	Priority      int    `json:"priority"`
+	Title         string `json:"title"`
+	Description   string `json:"description"`
+	Fix           string `json:"fix"`
+	Impact        string `json:"impact"`
+	Effort        string `json:"effort"`
+	Effectiveness int    `json:"effectiveness"`
+}
 
 // AIExploitEnhancer uses AI to discover additional exploit techniques
 type AIExploitEnhancer struct {
@@ -133,36 +165,145 @@ func (e *AIExploitEnhancer) callAI(prompt string) (string, error) {
 
 // parseAIResponse converts AI text response into AttackPath structures
 func (e *AIExploitEnhancer) parseAIResponse(response string) []AttackPath {
-	// TODO: Parse JSON response from AI
-	// For now, create a sample enhanced path
+	var paths []AttackPath
 	
-	paths := []AttackPath{}
+	// Extract JSON from response (AI might include explanatory text before/after JSON)
+	jsonStr := e.extractJSON(response)
+	if jsonStr == "" {
+		// Fallback: create a generic path with the AI response as description
+		return e.createFallbackPath(response)
+	}
 	
-	// Check if response contains useful exploit info
-	if strings.Contains(strings.ToLower(response), "exploit") || 
-	   strings.Contains(strings.ToLower(response), "attack") {
-		
-		// Create an AI-discovered attack path
-		aiPath := AttackPath{
-			ID:          generateID(),
-			Name:        "AI-Discovered: Advanced Exploit Chain",
-			Vector:      VectorPrivilegeEscalation,
-			Description: "AI analysis revealed additional attack surface",
-			Impact:      ImpactHigh,
-			Steps: []AttackStep{
-				{
-					Number:      1,
-					Description: "AI-suggested technique: " + truncateString(response, 100),
-					Command:     "# See AI analysis for details",
-					Success:     true,
-				},
-			},
+	// Parse AI techniques from JSON
+	var aiTechniques []AIExploitTechnique
+	if err := json.Unmarshal([]byte(jsonStr), &aiTechniques); err != nil {
+		// If JSON parsing fails, create fallback with raw response
+		return e.createFallbackPath(response)
+	}
+	
+	// Convert AI techniques to AttackPath structures
+	for i, technique := range aiTechniques {
+		if len(technique.Steps) == 0 {
+			continue // Skip techniques without steps
 		}
 		
-		paths = append(paths, aiPath)
+		// Convert AI vector to our vector type (remove unused variable)
+		
+		// Convert AI steps to our steps
+		var steps []AttackStep
+		for j, aiStep := range technique.Steps {
+			step := AttackStep{
+				Number:      j + 1,
+				Description: aiStep.Description,
+				Command:     aiStep.Command,
+				Success:     true, // Assume success for simulation
+			}
+			steps = append(steps, step)
+		}
+		
+		// Create attack path from AI technique
+		path := AttackPath{
+			ID:          fmt.Sprintf("AI-%d", i+1),
+			Name:        fmt.Sprintf("🤖 AI-Discovered: %s", technique.Name),
+			Vector:      e.mapAIVectorToVector(technique.Vector),
+			Description: fmt.Sprintf("%s\n\n🎯 MITRE ATT&CK: %s\n⚠️  Why Dangerous: %s\n📖 Real-world Example: %s", 
+				technique.Description, technique.MitreAttack, technique.WhyDangerous, technique.RealWorldExample),
+			Impact:      e.mapAIImpactToImpact(technique.Impact),
+			Steps:       steps,
+			Success:     true,
+		}
+		
+		paths = append(paths, path)
 	}
 	
 	return paths
+}
+
+// extractJSON finds and extracts JSON array from AI response
+func (e *AIExploitEnhancer) extractJSON(response string) string {
+	// Look for JSON array patterns
+	jsonRegex := regexp.MustCompile(`\[\s*\{[\s\S]*?\}\s*\]`)
+	matches := jsonRegex.FindStringSubmatch(response)
+	
+	if len(matches) > 0 {
+		return matches[0]
+	}
+	
+	// Try to find individual JSON objects and wrap in array
+	objRegex := regexp.MustCompile(`\{[\s\S]*?"name"[\s\S]*?\}`)
+	objMatches := objRegex.FindAllString(response, -1)
+	
+	if len(objMatches) > 0 {
+		// Wrap individual objects in array
+		return "[" + strings.Join(objMatches, ",") + "]"
+	}
+	
+	return ""
+}
+
+// createFallbackPath creates a generic path when JSON parsing fails
+func (e *AIExploitEnhancer) createFallbackPath(response string) []AttackPath {
+	// Only create fallback if response seems to contain exploit information
+	if !strings.Contains(strings.ToLower(response), "exploit") && 
+	   !strings.Contains(strings.ToLower(response), "attack") &&
+	   !strings.Contains(strings.ToLower(response), "technique") {
+		return []AttackPath{}
+	}
+	
+	// Create a generic AI-discovered path
+	aiPath := AttackPath{
+		ID:          "AI-GENERIC-1",
+		Name:        "🤖 AI-Discovered: Advanced Technique",
+		Vector:      VectorPrivilegeEscalation,
+		Description: fmt.Sprintf("AI analysis revealed additional attack surface:\n\n%s", truncateString(response, 500)),
+		Impact:      ImpactHigh,
+		Steps: []AttackStep{
+			{
+				Number:      1,
+				Description: "AI-suggested technique: " + truncateString(response, 200),
+				Command:     "# See full AI analysis in description",
+				Success:     true,
+			},
+		},
+	}
+	
+	return []AttackPath{aiPath}
+}
+
+// mapAIVectorToVector converts AI vector strings to our AttackVector type
+func (e *AIExploitEnhancer) mapAIVectorToVector(aiVector string) AttackVector {
+	switch strings.ToLower(aiVector) {
+	case "container_escape":
+		return VectorContainerEscape
+	case "lateral_movement":
+		return VectorLateralMovement
+	case "privilege_escalation":
+		return VectorPrivilegeEscalation
+	case "credential_theft":
+		return VectorCredentialTheft
+	case "data_exfiltration":
+		return VectorDataExfiltration
+	case "cloud_takeover":
+		return VectorCloudTakeover
+	default:
+		return VectorPrivilegeEscalation // Default fallback
+	}
+}
+
+// mapAIImpactToImpact converts AI impact strings to our ImpactLevel type
+func (e *AIExploitEnhancer) mapAIImpactToImpact(aiImpact string) ImpactLevel {
+	switch strings.ToUpper(aiImpact) {
+	case "CRITICAL":
+		return ImpactCritical
+	case "HIGH":
+		return ImpactHigh
+	case "MEDIUM":
+		return ImpactMedium
+	case "LOW":
+		return ImpactLow
+	default:
+		return ImpactHigh // Default fallback
+	}
 }
 
 // SuggestDefenses uses AI to recommend defenses against attack paths
@@ -236,20 +377,48 @@ func (e *AIExploitEnhancer) buildDefensePrompt(attackSummary string) string {
 
 // parseDefenseResponse converts AI defense suggestions to recommendations
 func (e *AIExploitEnhancer) parseDefenseResponse(response string) []Recommendation {
-	// TODO: Parse JSON response
-	// For now, create sample recommendations
+	var recommendations []Recommendation
 	
-	recommendations := []Recommendation{
-		{
-			Priority:    1,
-			Title:       "Remove privileged containers",
-			Description: "AI Analysis: " + truncateString(response, 200),
-			Fix:         "See full AI response for detailed steps",
-			Impact:      "Blocks container escape attacks",
-		},
+	// Extract JSON from response
+	jsonStr := e.extractJSON(response)
+	if jsonStr == "" {
+		// Fallback: create a generic recommendation
+		return e.createFallbackRecommendations(response)
+	}
+	
+	// Parse AI recommendations from JSON
+	var aiRecommendations []AIDefenseRecommendation
+	if err := json.Unmarshal([]byte(jsonStr), &aiRecommendations); err != nil {
+		return e.createFallbackRecommendations(response)
+	}
+	
+	// Convert AI recommendations to our format
+	for _, aiRec := range aiRecommendations {
+		rec := Recommendation{
+			Priority:    aiRec.Priority,
+			Title:       aiRec.Title,
+			Description: fmt.Sprintf("%s\n\n💡 Fix: %s\n📈 Effort: %s\n🎯 Effectiveness: %d%%", 
+				aiRec.Description, aiRec.Fix, aiRec.Effort, aiRec.Effectiveness),
+			Fix:         aiRec.Fix,
+			Impact:      aiRec.Impact,
+		}
+		recommendations = append(recommendations, rec)
 	}
 	
 	return recommendations
+}
+
+// createFallbackRecommendations creates generic recommendations when JSON parsing fails
+func (e *AIExploitEnhancer) createFallbackRecommendations(response string) []Recommendation {
+	return []Recommendation{
+		{
+			Priority:    1,
+			Title:       "🤖 AI-Generated Security Recommendation",
+			Description: fmt.Sprintf("AI Analysis Result:\n\n%s", truncateString(response, 500)),
+			Fix:         "Review the AI analysis above for detailed remediation steps",
+			Impact:      "Reduces attack surface based on AI analysis",
+		},
+	}
 }
 
 // ExplainAttackChain uses AI to generate a human-readable attack narrative

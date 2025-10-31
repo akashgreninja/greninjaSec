@@ -2,6 +2,7 @@ package shadow
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -429,7 +430,68 @@ func (s *Simulator) printSummary(sim ShadowSimulation) {
 	fmt.Printf("   ├─ Databases Accessible: %v\n", sim.BlastRadius.DatabasesAccessible)
 	fmt.Printf("   └─ Network Scope: %s\n", sim.BlastRadius.NetworkScope)
 	
+	// Show AI-discovered attack techniques separately
+	s.printAIDiscoveries(sim.AttackPaths)
+	
 	fmt.Printf("\n🎯 Priority Fixes: %d critical issues\n", len(sim.Vulnerabilities))
+}
+
+// printAIDiscoveries shows detailed information about AI-discovered attack techniques
+func (s *Simulator) printAIDiscoveries(paths []AttackPath) {
+	aiPaths := []AttackPath{}
+	for _, path := range paths {
+		if strings.Contains(path.Name, "🤖 AI-Discovered") {
+			aiPaths = append(aiPaths, path)
+		}
+	}
+	
+	if len(aiPaths) == 0 {
+		return
+	}
+	
+	fmt.Printf("\n🤖 AI-DISCOVERED ATTACK TECHNIQUES:\n")
+	fmt.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+	
+	for i, path := range aiPaths {
+		fmt.Printf("\n[%d] %s\n", i+1, strings.TrimPrefix(path.Name, "🤖 AI-Discovered: "))
+		fmt.Printf("    Vector: %s | Impact: %s\n", path.Vector, path.Impact)
+		
+		if len(path.Description) > 0 {
+			// Split description into sections
+			desc := path.Description
+			if strings.Contains(desc, "🎯 MITRE ATT&CK:") {
+				parts := strings.Split(desc, "\n\n")
+				for _, part := range parts {
+					if strings.HasPrefix(part, "🎯 MITRE ATT&CK:") {
+						fmt.Printf("    %s\n", part)
+					} else if strings.HasPrefix(part, "⚠️  Why Dangerous:") {
+						fmt.Printf("    %s\n", part)
+					} else if strings.HasPrefix(part, "📖 Real-world Example:") {
+						fmt.Printf("    %s\n", part)
+					} else if len(strings.TrimSpace(part)) > 0 {
+						fmt.Printf("    📝 %s\n", truncateString(part, 150))
+					}
+				}
+			} else {
+				fmt.Printf("    📝 %s\n", truncateString(desc, 200))
+			}
+		}
+		
+		// Show key attack steps
+		if len(path.Steps) > 0 {
+			fmt.Printf("    🔧 Attack Steps:\n")
+			for j, step := range path.Steps {
+				if j >= 3 { // Show only first 3 steps
+					fmt.Printf("       ... and %d more steps\n", len(path.Steps)-3)
+					break
+				}
+				fmt.Printf("       %d. %s\n", step.Number, truncateString(step.Description, 100))
+				if step.Command != "" && !strings.Contains(step.Command, "# See") {
+					fmt.Printf("          Command: %s\n", truncateString(step.Command, 80))
+				}
+			}
+		}
+	}
 }
 
 // Utility functions
