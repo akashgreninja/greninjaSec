@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreninjaSec Security Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🥷 GreninjaSec Security Report</h1>
+            <div class="timestamp">Generated: {{.Timestamp}}</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card critical">
+                <div class="stat-number">{{.CriticalCount}}</div>
+                <div class="stat-label">Critical</div>
+            </div>
+            <div class="stat-card high">
+                <div class="stat-number">{{.HighCount}}</div>
+                <div class="stat-label">High</div>
+            </div>
+            <div class="stat-card medium">
+                <div class="stat-number">{{.MediumCount}}</div>
+                <div class="stat-label">Medium</div>
+            </div>
+            <div class="stat-card low">
+                <div class="stat-number">{{.LowCount}}</div>
+                <div class="stat-label">Low</div>
+            </div>
+            <div class="stat-card total">
+                <div class="stat-number">{{.TotalFindings}}</div>
+                <div class="stat-label">Total</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="openTab(event, 'overview')">📊 Overview</button>
+            {{if .CVEFindings}}<button class="tab-button" onclick="openTab(event, 'cve')">🔍 CVE ({{.CVECount}})</button>{{end}}
+            {{if .AttackChains}}<button class="tab-button" onclick="openTab(event, 'attack-chains')">🎯 Attack Chains ({{len .AttackChains}})</button>{{end}}
+            <button class="tab-button" onclick="openTab(event, 'kubernetes')">☸️ Kubernetes</button>
+            <button class="tab-button" onclick="openTab(event, 'terraform')">🏗️ Terraform</button>
+            <button class="tab-button" onclick="openTab(event, 'docker')">🐳 Docker</button>
+            <button class="tab-button" onclick="openTab(event, 'secrets')">🔐 Secrets</button>
+            <button class="tab-button" onclick="openTab(event, 'all-findings')">📋 All Findings</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="overview" class="tab-content active">
+            <div class="summary-box">
+                <h3>📊 Scan Summary</h3>
+                <p>{{.ScanSummary}}</p>
+            </div>
+            
+            <div class="section">
+                <h2 class="section-title">📈 Security Metrics</h2>
+                <div class="charts-grid">
+                    <div class="chart-container">
+                        <canvas id="severityChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="fileChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CVE Tab -->
+        {{if .CVEFindings}}
+        <div id="cve" class="tab-content">
+            <h2 class="section-title">🔍 CVE Vulnerabilities</h2>
+            <div class="cve-grid">
+                {{range $idx, $finding := .CVEFindings}}
+                {{if lt $idx 10}}
+                <div class="cve-card severity-{{lower $finding.Severity}}">
+                    <div class="cve-header">
+                        <span class="cve-id">{{$finding.RuleID}}</span>
+                        <span class="severity-badge severity-{{lower $finding.Severity}}">{{$finding.Severity}}</span>
+                    </div>
+                    <div class="cve-title">{{$finding.Title}}</div>
+                    <div class="cve-file">📄 {{$finding.File}}</div>
+                    {{if $finding.Snippet}}
+                    <div class="cve-snippet">{{$finding.Snippet}}</div>
+                    {{end}}
+                </div>
+                {{end}}
+                {{end}}
+            </div>
+            {{if gt (len .CVEFindings) 10}}
+            <div class="cve-more">
+                <p>... and {{sub (len .CVEFindings) 10}} more CVE vulnerabilities. See "All Findings" tab for complete list.</p>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+
+        <!-- Attack Chains Tab -->
+        {{if .AttackChains}}
+        <div id="attack-chains" class="tab-content">
+            <h2 class="section-title">🎯 Attack Chain Analysis</h2>
+            {{range $chain := .AttackChains}}
+            <div class="chain-container">
+                <div class="chain-header">
+                    <div>
+                        <h3>{{$chain.Name}}</h3>
+                        <p>{{len $chain.Findings}} vulnerabilities exploited across {{len $chain.Steps}} steps</p>
+                    </div>
+                    <span class="risk-badge risk-{{lower $chain.Severity}}">{{$chain.Severity}} RISK</span>
+                </div>
+                <div class="chain-steps">
+                    {{range $idx, $step := $chain.Steps}}
+                    <div class="chain-step">
+                        <div class="step-number">{{$step.Step}}</div>
+                        <div class="step-content">
+                            <p>{{$step.Description}}</p>
+                        </div>
+                    </div>
+                    {{end}}
+                </div>
+                <div class="chain-impact">
+                    <strong>💥 Potential Impact:</strong> {{$chain.Impact}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+
+        <!-- Kubernetes Tab -->
+        <div id="kubernetes" class="tab-content">
+            <h2 class="section-title">☸️ Kubernetes Security Findings</h2>
+            {{range $sev := list "CRITICAL" "HIGH" "MEDIUM" "LOW"}}
+                {{$findings := index $.FindingsBySev $sev}}
+                {{if $findings}}
+                    {{$hasK8s := false}}
+                    {{range $finding := $findings}}
+                        {{if or (eq $finding.RuleID "R001") (hasPrefix $finding.RuleID "KUBESEC_")}}
+                            {{if not $hasK8s}}
+                                <h3 style="color: {{colorForSeverity $sev}}; margin: 2rem 0 1rem 0;">{{$sev}} ({{len $findings}})</h3>
+                                {{$hasK8s = true}}
+                            {{end}}
+                            <div class="finding">
+                                <div class="finding-header">
+                                    <div>
+                                        <div class="finding-title">{{$finding.Title}}</div>
+                                        <div class="finding-file">📄 {{$finding.File}}</div>
+                                    </div>
+                                    <span class="badge {{lower $finding.Severity}}">{{$finding.Severity}}</span>
+                                </div>
+                                {{if $finding.Snippet}}
+                                <div class="code-snippet">{{$finding.Snippet}}</div>
+                                {{end}}
+                            </div>
+                        {{end}}
+                    {{end}}
+                {{end}}
+            {{end}}
+        </div>
+
+        <!-- Terraform Tab -->
+        <div id="terraform" class="tab-content">
+            <h2 class="section-title">🏗️ Terraform Security Findings</h2>
+            {{range $sev := list "CRITICAL" "HIGH" "MEDIUM" "LOW"}}
+                {{$findings := index $.FindingsBySev $sev}}
+                {{if $findings}}
+                    {{$hasTF := false}}
+                    {{range $finding := $findings}}
+                        {{if hasPrefix $finding.RuleID "TFSEC_"}}
+                            {{if not $hasTF}}
+                                <h3 style="color: {{colorForSeverity $sev}}; margin: 2rem 0 1rem 0;">{{$sev}}</h3>
+                                {{$hasTF = true}}
+                            {{end}}
+                            <div class="finding">
+                                <div class="finding-header">
+                                    <div>
+                                        <div class="finding-title">{{$finding.Title}}</div>
+                                        <div class="finding-file">📄 {{$finding.File}}</div>
+                                    </div>
+                                    <span class="badge {{lower $finding.Severity}}">{{$finding.Severity}}</span>
+                                </div>
+                                {{if $finding.Snippet}}
+                                <div class="code-snippet">{{$finding.Snippet}}</div>
+                                {{end}}
+                            </div>
+                        {{end}}
+                    {{end}}
+                {{end}}
+            {{end}}
+        </div>
+
+        <!-- Docker Tab -->
+        <div id="docker" class="tab-content">
+            <h2 class="section-title">🐳 Docker/Hadolint Findings</h2>
+            {{range $sev := list "CRITICAL" "HIGH" "MEDIUM" "LOW"}}
+                {{$findings := index $.FindingsBySev $sev}}
+                {{if $findings}}
+                    {{$hasDocker := false}}
+                    {{range $finding := $findings}}
+                        {{if hasPrefix $finding.RuleID "HADOLINT_"}}
+                            {{if not $hasDocker}}
+                                <h3 style="color: {{colorForSeverity $sev}}; margin: 2rem 0 1rem 0;">{{$sev}}</h3>
+                                {{$hasDocker = true}}
+                            {{end}}
+                            <div class="finding">
+                                <div class="finding-header">
+                                    <div>
+                                        <div class="finding-title">{{$finding.Title}}</div>
+                                        <div class="finding-file">📄 {{$finding.File}}</div>
+                                    </div>
+                                    <span class="badge {{lower $finding.Severity}}">{{$finding.Severity}}</span>
+                                </div>
+                                {{if $finding.Snippet}}
+                                <div class="code-snippet">{{$finding.Snippet}}</div>
+                                {{end}}
+                            </div>
+                        {{end}}
+                    {{end}}
+                {{end}}
+            {{end}}
+        </div>
+
+        <!-- Secrets Tab -->
+        <div id="secrets" class="tab-content">
+            <h2 class="section-title">🔐 Hardcoded Secrets</h2>
+            {{range $sev := list "CRITICAL" "HIGH" "MEDIUM" "LOW"}}
+                {{$findings := index $.FindingsBySev $sev}}
+                {{if $findings}}
+                    {{$hasSecrets := false}}
+                    {{range $finding := $findings}}
+                        {{if hasPrefix $finding.RuleID "SECRET_"}}
+                            {{if not $hasSecrets}}
+                                <h3 style="color: {{colorForSeverity $sev}}; margin: 2rem 0 1rem 0;">{{$sev}}</h3>
+                                {{$hasSecrets = true}}
+                            {{end}}
+                            <div class="finding">
+                                <div class="finding-header">
+                                    <div>
+                                        <div class="finding-title">{{$finding.Title}}</div>
+                                        <div class="finding-file">📄 {{$finding.File}}</div>
+                                    </div>
+                                    <span class="badge {{lower $finding.Severity}}">{{$finding.Severity}}</span>
+                                </div>
+                                {{if $finding.Snippet}}
+                                <div class="code-snippet">{{$finding.Snippet}}</div>
+                                {{end}}
+                            </div>
+                        {{end}}
+                    {{end}}
+                {{end}}
+            {{end}}
+        </div>
+
+        <!-- All Findings Tab -->
+        <div id="all-findings" class="tab-content">
+            <h2 class="section-title">📋 All Findings by Severity</h2>
+            {{range $severity := list "CRITICAL" "HIGH" "MEDIUM" "LOW"}}
+                {{if index $.FindingsBySev $severity}}
+                <h3 style="color: {{colorForSeverity $severity}}; margin: 2rem 0 1rem 0;">{{$severity}} ({{len (index $.FindingsBySev $severity)}})</h3>
+                {{range index $.FindingsBySev $severity}}
+                <div class="finding">
+                    <div class="finding-header">
+                        <div>
+                            <div class="finding-title">{{.Title}}</div>
+                            <div class="finding-file">📄 {{.File}}</div>
+                        </div>
+                        <span class="badge {{.Severity | lower}}">{{.Severity}}</span>
+                    </div>
+                    {{if .Snippet}}
+                    <div class="code-snippet">{{.Snippet}}</div>
+                    {{end}}
+                </div>
+                {{end}}
+                {{end}}
+            {{end}}
+        </div>
+    </div>
+
+    <script src="./script.js"></script>
+</body>
+</html>

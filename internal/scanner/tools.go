@@ -226,3 +226,78 @@ func min(a, b int) int {
 	}
 	return b
 }
+
+// EnsureTrivy ensures Trivy is available
+func (tm *ToolManager) EnsureTrivy() (string, error) {
+	// 1. Check if in PATH
+	if path, err := exec.LookPath("trivy"); err == nil {
+		return path, nil
+	}
+
+	// 2. Check in our bin directory
+	localPath := filepath.Join(tm.binDir, "trivy")
+	if _, err := os.Stat(localPath); err == nil {
+		return localPath, nil
+	}
+
+	// 3. Auto-download
+	fmt.Fprintf(os.Stderr, "⏳ Trivy not found. Downloading...\n")
+
+	url := tm.getTrivyURL()
+	if url == "" {
+		return "", fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
+	}
+
+	if err := tm.downloadAndExtractTrivy(url, localPath); err != nil {
+		return "", fmt.Errorf("failed to download trivy: %v", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "✅ Trivy installed to %s\n", localPath)
+	return localPath, nil
+}
+
+func (tm *ToolManager) getTrivyURL() string {
+	version := "0.48.0" // Latest stable version
+	
+	switch runtime.GOOS {
+	case "linux":
+		switch runtime.GOARCH {
+		case "amd64":
+			return fmt.Sprintf("https://github.com/aquasecurity/trivy/releases/download/v%s/trivy_%s_Linux-64bit.tar.gz", version, version)
+		case "arm64":
+			return fmt.Sprintf("https://github.com/aquasecurity/trivy/releases/download/v%s/trivy_%s_Linux-ARM64.tar.gz", version, version)
+		}
+	case "darwin":
+		switch runtime.GOARCH {
+		case "amd64":
+			return fmt.Sprintf("https://github.com/aquasecurity/trivy/releases/download/v%s/trivy_%s_macOS-64bit.tar.gz", version, version)
+		case "arm64":
+			return fmt.Sprintf("https://github.com/aquasecurity/trivy/releases/download/v%s/trivy_%s_macOS-ARM64.tar.gz", version, version)
+		}
+	}
+	return ""
+}
+
+func (tm *ToolManager) downloadAndExtractTrivy(url, dest string) error {
+	// Trivy comes as tar.gz, we need to download and extract
+	tmpFile := dest + ".tar.gz"
+	defer os.Remove(tmpFile)
+
+	// Download tar.gz
+	if err := tm.downloadBinary(url, tmpFile); err != nil {
+		return err
+	}
+
+	// Extract trivy binary from tar.gz
+	cmd := exec.Command("tar", "-xzf", tmpFile, "-C", filepath.Dir(dest), "trivy")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to extract trivy: %v", err)
+	}
+
+	// Make executable
+	if err := os.Chmod(dest, 0755); err != nil {
+		return fmt.Errorf("failed to make executable: %v", err)
+	}
+
+	return nil
+}

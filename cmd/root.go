@@ -13,18 +13,19 @@ import (
 )
 
 var (
-	targetPath     string
-	format         string
-	htmlOutput     string
-	scanManifests  bool
-	scanSecrets    bool
-	scanDockerfile bool
-	scanTerraform  bool
-	scanAll        bool
-	analyzeChains  bool
-	aiEnhance      bool
-	verbose        bool
-	Version        = "dev" // Set via ldflags during build
+	targetPath          string
+	format              string
+	htmlOutput          string
+	scanManifests       bool
+	scanSecrets         bool
+	scanDockerfile      bool
+	scanTerraform       bool
+	scanVulnerabilities bool
+	scanAll             bool
+	analyzeChains       bool
+	aiEnhance           bool
+	verbose             bool
+	Version             = "dev" // Set via ldflags during build
 	rootCmd        = &cobra.Command{
 		Use:   "greninjasec",
 		Short: "GreninjaSec - Kubernetes & Infrastructure Security Scanner",
@@ -35,6 +36,7 @@ Detects security misconfigurations in:
   • Hardcoded secrets (credentials, API keys, tokens)
   • Dockerfiles (50+ hadolint security checks)
   • Terraform files (100+ tfsec security checks)
+  • CVE vulnerabilities with CVSS scores (Trivy integration)
 
 Examples:
   # Scan everything (manifests + secrets + dockerfiles + terraform)
@@ -52,8 +54,11 @@ Examples:
   # Scan only for secrets
   greninjasec --secrets --path .
 
+  # Scan for CVE vulnerabilities with CVSS scores
+  greninjasec --vulnerabilities --path .
+
   # Combine scanners
-  greninjasec --manifest --dockerfile --terraform --path ./infra
+  greninjasec --manifest --dockerfile --terraform --vulnerabilities --path ./infra
 
   # Output as JSON for CI/CD
   greninjasec --all --format json
@@ -67,12 +72,13 @@ Examples:
 
 			// Determine what to scan
 			opts := scanner.ScanOptions{
-				ScanManifests:  scanManifests,
-				ScanSecrets:    scanSecrets,
-				ScanDockerfile: scanDockerfile,
-				ScanTerraform:  scanTerraform,
-				AnalyzeChains:  analyzeChains,
-				AIEnhance:      aiEnhance,
+				ScanManifests:       scanManifests,
+				ScanSecrets:         scanSecrets,
+				ScanDockerfile:      scanDockerfile,
+				ScanTerraform:       scanTerraform,
+				ScanVulnerabilities: scanVulnerabilities,
+				AnalyzeChains:       analyzeChains,
+				AIEnhance:           aiEnhance,
 			}
 
 			// If --all is specified, enable everything
@@ -81,14 +87,16 @@ Examples:
 				opts.ScanSecrets = true
 				opts.ScanDockerfile = true
 				opts.ScanTerraform = true
+				opts.ScanVulnerabilities = true
 			}
 
 			// If nothing specified, default to --all
-			if !scanManifests && !scanSecrets && !scanDockerfile && !scanTerraform && !scanAll {
+			if !scanManifests && !scanSecrets && !scanDockerfile && !scanTerraform && !scanVulnerabilities && !scanAll {
 				opts.ScanManifests = true
 				opts.ScanSecrets = true
 				opts.ScanDockerfile = true
 				opts.ScanTerraform = true
+				opts.ScanVulnerabilities = true
 			}
 
 			s := scanner.NewScanner()
@@ -106,7 +114,7 @@ Examples:
 
 				// Generate HTML report if requested
 				if htmlOutput != "" {
-					if err := scanner.GenerateHTMLReport(result, htmlOutput); err != nil {
+					if err := scanner.GenerateHTMLReportV2(result, htmlOutput); err != nil {
 						return fmt.Errorf("failed to generate HTML report: %w", err)
 					}
 					fmt.Printf("✅ HTML report generated: %s\n", htmlOutput)
@@ -144,6 +152,9 @@ Examples:
 			}
 			if opts.ScanTerraform {
 				fmt.Printf("[Terraform] ")
+			}
+			if opts.ScanVulnerabilities {
+				fmt.Printf("[CVE/Vulnerabilities] ")
 			}
 			fmt.Printf("\n")
 			fmt.Printf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
@@ -241,7 +252,8 @@ func init() {
 	rootCmd.Flags().BoolVarP(&scanSecrets, "secrets", "s", false, "Scan for hardcoded secrets and credentials")
 	rootCmd.Flags().BoolVarP(&scanDockerfile, "dockerfile", "d", false, "Scan Dockerfiles with hadolint (50+ checks)")
 	rootCmd.Flags().BoolVarP(&scanTerraform, "terraform", "t", false, "Scan Terraform files with tfsec (100+ checks)")
-	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles + terraform)")
+	rootCmd.Flags().BoolVar(&scanVulnerabilities, "vulnerabilities", false, "Scan for CVE vulnerabilities with CVSS scores using Trivy")
+	rootCmd.Flags().BoolVarP(&scanAll, "all", "a", false, "Run all scanners (manifests + secrets + dockerfiles + terraform + vulnerabilities)")
 	rootCmd.Flags().BoolVarP(&analyzeChains, "attack-chains", "c", false, "Analyze attack chains (correlate findings into exploit paths)")
 	rootCmd.Flags().BoolVarP(&aiEnhance, "ai-enhance", "", false, "Use AI to discover additional attack chains (requires .env with OPENWEBUI_URL and OPENWEBUI_TOKEN)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all findings (default: summary only)")
@@ -279,6 +291,9 @@ func printResultPretty(result scanner.ScanResult, opts scanner.ScanOptions) erro
 	}
 	if opts.ScanTerraform {
 		fmt.Printf("[Terraform] ")
+	}
+	if opts.ScanVulnerabilities {
+		fmt.Printf("[CVE/Vulnerabilities] ")
 	}
 	if opts.AnalyzeChains {
 		fmt.Printf("[Attack Chains")

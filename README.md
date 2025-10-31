@@ -49,6 +49,9 @@ greninjasec --all --attack-chains --path /path/to/your/code
 # Scan specific types
 greninjasec --manifest --secrets --path examples/
 
+# Scan for CVE vulnerabilities and CVSS scores
+greninjasec --vulnerabilities --path .
+
 # Output as JSON (for CI/CD)
 greninjasec --all --format json --path .
 
@@ -102,6 +105,7 @@ git commit --no-verify -m "commit message"
 - ✅ **Hardcoded secrets detection** (12+ patterns: AWS keys, GitHub tokens, Google API keys, private keys, high entropy strings)
 - ✅ **Dockerfile security scanning** via Hadolint (50+ checks)
 - ✅ **Terraform security scanning** via Tfsec (100+ checks)
+- ✅ **CVE/Vulnerability scanning** via Trivy with CVSS scores (scans dependencies + container images)
 - ✅ **Auto-download tool management** (no manual installation required)
 
 **Advanced Features:**

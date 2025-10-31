@@ -23,12 +23,13 @@ type Finding struct {
 
 // ScanOptions defines what types of scans to perform
 type ScanOptions struct {
-	ScanManifests  bool // Scan Kubernetes YAML manifests
-	ScanSecrets    bool // Scan for hardcoded secrets
-	ScanDockerfile bool // Scan Dockerfiles
-	ScanTerraform  bool // Scan Terraform files
-	AnalyzeChains  bool // Analyze attack chains
-	AIEnhance      bool // Use AI for enhanced attack chain analysis
+	ScanManifests       bool // Scan Kubernetes YAML manifests
+	ScanSecrets         bool // Scan for hardcoded secrets
+	ScanDockerfile      bool // Scan Dockerfiles
+	ScanTerraform       bool // Scan Terraform files
+	ScanVulnerabilities bool // Scan for CVEs with Trivy
+	AnalyzeChains       bool // Analyze attack chains
+	AIEnhance           bool // Use AI for enhanced attack chain analysis
 }
 
 // ScanResult contains findings and optional attack chain analysis
@@ -38,10 +39,14 @@ type ScanResult struct {
 }
 
 // Scanner is a minimal repo scanner.
-type Scanner struct{}
+type Scanner struct {
+	toolManager *ToolManager
+}
 
 func NewScanner() *Scanner {
-	return &Scanner{}
+	return &Scanner{
+		toolManager: NewToolManager(),
+	}
 }
 
 // Scan walks the path and scans for all security issues (backward compatibility)
@@ -58,6 +63,17 @@ func (s *Scanner) Scan(path string) ([]Finding, error) {
 // ScanWithOptions walks the path and scans based on provided options
 func (s *Scanner) ScanWithOptions(path string, opts ScanOptions) ([]Finding, error) {
 	var findings []Finding
+
+	// --- Scan for vulnerabilities with Trivy (if enabled) ---
+	// This runs once for the entire directory before the file walk
+	if opts.ScanVulnerabilities {
+		vulnFindings, err := s.scanVulnerabilities(path)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "⚠️  Vulnerability scanning failed: %v\n", err)
+		} else {
+			findings = append(findings, vulnFindings...)
+		}
+	}
 
 	err := filepath.WalkDir(path, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {

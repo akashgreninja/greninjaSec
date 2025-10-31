@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 )
 
@@ -228,24 +229,47 @@ func generateSteps(template AttackChainTemplate, findings []Finding) []ChainStep
 	return steps
 }
 
-// generateStepDescription creates a narrative for each step
+// generateStepDescription creates a narrative for each step with specific details
 func generateStepDescription(stepNum int, finding Finding, chainName string) string {
-	descriptions := map[string]string{
-		"SECRET_AWS_ACCESS_KEY": "Attacker discovers hardcoded AWS access key in source code or config file",
-		"SECRET_GITHUB_TOKEN":   "Attacker finds GitHub personal access token, gains access to private repositories",
-		"SECRET_GOOGLE_API_KEY": "Attacker obtains Google API key, can access GCP services",
-		"TFSEC_":                "Attacker exploits Terraform misconfiguration to access cloud resources",
-		"R001":                  "Attacker exploits container running as root to escape and access host",
-		"KUBESEC_":              "Attacker leverages Kubernetes misconfiguration for privilege escalation",
-		"HADOLINT_":             "Attacker exploits vulnerable or misconfigured container image",
-	}
-
-	// Try to match description by finding ID prefix
-	for prefix, desc := range descriptions {
-		if strings.HasPrefix(finding.RuleID, prefix) {
-			return desc
+	// Extract file and line info from snippet if available
+	fileInfo := filepath.Base(finding.File)
+	
+	// For specific finding types, provide detailed descriptions
+	switch {
+	case strings.HasPrefix(finding.RuleID, "SECRET_AWS"):
+		return fmt.Sprintf("Hardcoded AWS credentials found in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "SECRET_GITHUB"):
+		return fmt.Sprintf("GitHub token exposed in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "SECRET_GOOGLE"):
+		return fmt.Sprintf("Google API key found in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "SECRET_"):
+		return fmt.Sprintf("Secret credentials in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "CVE_"):
+		// Extract CVE ID and package name from snippet
+		snippet := finding.Snippet
+		if strings.Contains(snippet, "CVE:") {
+			return fmt.Sprintf("Vulnerable dependency in %s - %s", fileInfo, finding.Title)
 		}
+		return fmt.Sprintf("CVE vulnerability in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "TFSEC_"):
+		// Show the actual terraform issue, not generic text
+		return fmt.Sprintf("Terraform: %s (in %s)", finding.Title, fileInfo)
+	
+	case finding.RuleID == "R001":
+		return fmt.Sprintf("Container running as root in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "KUBESEC_"):
+		return fmt.Sprintf("K8s misconfiguration in %s - %s", fileInfo, finding.Title)
+	
+	case strings.HasPrefix(finding.RuleID, "HADOLINT_"):
+		return fmt.Sprintf("Dockerfile issue in %s - %s", fileInfo, finding.Title)
+	
+	default:
+		return fmt.Sprintf("%s in %s", finding.Title, fileInfo)
 	}
-
-	return fmt.Sprintf("Attacker exploits %s (%s)", finding.Title, finding.File)
 }
