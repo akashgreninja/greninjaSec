@@ -166,9 +166,9 @@ func scanFileForSecrets(filePath string) []Finding {
 			for _, word := range words {
 				// Clean the word
 				cleaned := cleanWord(word)
-				if len(cleaned) >= 20 && len(cleaned) <= 100 {
+				if len(cleaned) >= 20 && len(cleaned) <= 100 && !isLikelyFalsePositiveString(cleaned, line) {
 					entropy := calculateEntropy(cleaned)
-					if entropy > 4.5 { // High entropy threshold
+					if entropy > 4.8 { // Increased threshold to reduce false positives
 						f := Finding{
 							RuleID:   "SECRET_HIGH_ENTROPY",
 							Title:    "High Entropy String (Possible Secret)",
@@ -211,12 +211,23 @@ func shouldSkipForSecrets(filePath string) bool {
 // shouldCheckEntropy determines if a line should be checked for high entropy
 func shouldCheckEntropy(line string) bool {
 	lower := strings.ToLower(line)
-	// Look for assignment patterns
-	return strings.Contains(lower, "=") ||
+
+	// Skip test files and documentation
+	if strings.Contains(lower, "test") || strings.Contains(lower, "example") ||
+		strings.Contains(lower, "mock") || strings.Contains(lower, "dummy") {
+		return false
+	}
+
+	// Look for assignment patterns and secret-like contexts
+	return (strings.Contains(lower, "=") ||
 		strings.Contains(lower, ":") ||
 		strings.Contains(lower, "token") ||
 		strings.Contains(lower, "secret") ||
-		strings.Contains(lower, "key")
+		strings.Contains(lower, "key") ||
+		strings.Contains(lower, "password") ||
+		strings.Contains(lower, "auth")) &&
+		!strings.Contains(lower, "//") && // Skip comments
+		!strings.Contains(lower, "#") // Skip comments
 }
 
 // cleanWord removes common delimiters and quotes from a word
@@ -263,4 +274,67 @@ func formatSecretSnippet(lineNum int, line string, redacted string) string {
 		line = line[:100] + "..."
 	}
 	return fmt.Sprintf("[Line %d] %s", lineNum, redacted)
+}
+
+// isLikelyFalsePositiveString checks if a high-entropy string is likely a false positive
+func isLikelyFalsePositiveString(s, line string) bool {
+	lower := strings.ToLower(s)
+	lowerLine := strings.ToLower(line)
+
+	// Common false positive patterns
+	falsePositivePatterns := []string{
+		"expected", "want", "got", "assert", "test", "example", "mock",
+		"dummy", "fake", "sample", "lorem", "ipsum", "placeholder",
+		"template", "schema", "protobuf", "proto", "generated",
+		"spec", "config", "option", "param", "argument",
+	}
+
+	for _, pattern := range falsePositivePatterns {
+		if strings.Contains(lower, pattern) || strings.Contains(lowerLine, pattern) {
+			return true
+		}
+	}
+
+	// Check for common programming patterns that generate high entropy
+	if strings.Contains(lowerLine, "uuid") || strings.Contains(lowerLine, "guid") ||
+		strings.Contains(lowerLine, "hash") || strings.Contains(lowerLine, "checksum") ||
+		strings.Contains(lowerLine, "digest") || strings.Contains(lowerLine, "base64") {
+		return true
+	}
+
+	// Check for repeated characters (often templates or placeholders)
+	if hasRepeatedPatterns(s) {
+		return true
+	}
+
+	return false
+}
+
+// hasRepeatedPatterns checks for repeated character patterns that suggest placeholders
+func hasRepeatedPatterns(s string) bool {
+	if len(s) < 8 {
+		return false
+	}
+
+	// Check for patterns like "XXXXXXXX" or "abcdefgh" repeated
+	for i := 2; i <= 8; i++ {
+		if len(s)%i == 0 {
+			pattern := s[:i]
+			repeated := strings.Repeat(pattern, len(s)/i)
+			if repeated == s {
+				return true
+			}
+		}
+	}
+
+	// Check for sequential characters (abcd, 1234, etc.)
+	sequential := 0
+	for i := 1; i < len(s); i++ {
+		if s[i] == s[i-1]+1 {
+			sequential++
+		}
+	}
+
+	// If more than 60% of characters are sequential, likely a placeholder
+	return float64(sequential)/float64(len(s)) > 0.6
 }

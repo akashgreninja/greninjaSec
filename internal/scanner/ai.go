@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -44,8 +45,28 @@ func AIEnhancedChainAnalysis(findings []Finding, ruleBasedChains []AttackChain) 
 		return ruleBasedChains, nil // Return rule-based chains only
 	}
 
-	// Prepare findings summary for AI
-	findingsSummary := prepareFindingsSummary(findings)
+	// Filter and prioritize findings for AI analysis
+	prioritizedFindings := filterAndPrioritizeFindings(findings)
+
+	// Skip AI analysis if no high-priority findings
+	if len(prioritizedFindings) == 0 {
+		fmt.Fprintf(os.Stderr, "ℹ️  No high-priority findings for AI analysis\n")
+		return ruleBasedChains, nil
+	}
+
+	// Prepare optimized findings summary for AI
+	findingsSummary := prepareOptimizedFindingsSummary(prioritizedFindings)
+
+	// Check if prompt would exceed reasonable size
+	estimatedTokens := estimateTokenCount(findingsSummary)
+	maxTokens := 800000 // Conservative limit to stay under context window
+
+	if estimatedTokens > maxTokens {
+		// Further reduce findings if still too large
+		prioritizedFindings = reduceFindingsForContext(prioritizedFindings, maxTokens)
+		findingsSummary = prepareOptimizedFindingsSummary(prioritizedFindings)
+		fmt.Fprintf(os.Stderr, "ℹ️  Reduced findings to %d for AI analysis due to size constraints\n", len(prioritizedFindings))
+	}
 
 	// Create AI prompt
 	prompt := fmt.Sprintf(`You are an expert red team security analyst. Analyze these security findings and identify realistic attack chains.
@@ -60,14 +81,14 @@ TASK:
 1. Identify any ADDITIONAL attack chains not already detected
 2. Look for non-obvious correlations between findings
 3. Consider real-world attack patterns
-4. Focus on HIGH and CRITICAL severity chains
+4. Focus on HIGH and CRITICAL severity chains only
 
 Return ONLY a JSON array of attack chains in this format:
 [
   {
     "name": "Attack Chain Name",
     "severity": "CRITICAL|HIGH|MEDIUM|LOW",
-    "likelihood": "HIGH|MEDIUM|LOW",
+    "likelihood": "HIGH|MEDIUM|LOW", 
     "impact": "Description of worst-case impact",
     "steps": [
       {
@@ -244,4 +265,207 @@ func extractJSONArray(content string) string {
 	}
 
 	return content
+}
+
+// filterAndPrioritizeFindings filters out false positives and prioritizes findings for AI analysis
+func filterAndPrioritizeFindings(findings []Finding) []Finding {
+	var prioritized []Finding
+
+	// Priority scoring: CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1
+	severityPriority := map[string]int{
+		"CRITICAL": 4,
+		"HIGH":     3,
+		"MEDIUM":   2,
+		"LOW":      1,
+	}
+
+	// Filter out likely false positives
+	for _, f := range findings {
+		if isLikelyFalsePositive(f) {
+			continue
+		}
+		// Include CRITICAL, HIGH, and some MEDIUM findings for AI analysis
+		if f.Severity == "CRITICAL" || f.Severity == "HIGH" ||
+			(f.Severity == "MEDIUM" && !strings.Contains(strings.ToLower(f.File), "_test.go")) {
+			prioritized = append(prioritized, f)
+		}
+	}
+
+	// Sort by severity (highest first) and deduplicate similar findings
+	sort.Slice(prioritized, func(i, j int) bool {
+		return severityPriority[prioritized[i].Severity] > severityPriority[prioritized[j].Severity]
+	})
+
+	// Deduplicate and limit findings
+	deduped := deduplicateFindings(prioritized)
+
+	// Limit to most important findings to stay within context
+	if len(deduped) > 100 {
+		return deduped[:100]
+	}
+
+	return deduped
+}
+
+// isLikelyFalsePositive determines if a finding is likely a false positive
+func isLikelyFalsePositive(f Finding) bool {
+	file := strings.ToLower(f.File)
+	snippet := strings.ToLower(f.Snippet)
+
+	// Skip test files with obvious test data
+	if strings.Contains(file, "_test.go") || strings.Contains(file, "/test/") {
+		// Allow only truly dangerous secrets in test files
+		if f.RuleID == "SECRET_HIGH_ENTROPY" {
+			return true
+		}
+		// Check for test patterns in snippets
+		testPatterns := []string{"test", "example", "mock", "dummy", "fake", "sample"}
+		for _, pattern := range testPatterns {
+			if strings.Contains(snippet, pattern) || strings.Contains(file, pattern) {
+				return true
+			}
+		}
+	}
+
+	// Filter out common false positive patterns for high entropy strings
+	if f.RuleID == "SECRET_HIGH_ENTROPY" {
+		falsePositivePatterns := []string{
+			"expected", "want", "got", "assert", "test", "example",
+			"lorem", "ipsum", "placeholder", "template", "schema",
+			"protobuf", "proto", "generated", "uuid", "guid",
+			"hex", "hash", "checksum", "digest", "base64",
+		}
+
+		for _, pattern := range falsePositivePatterns {
+			if strings.Contains(snippet, pattern) || strings.Contains(file, pattern) {
+				return true
+			}
+		}
+
+		// Skip very common variable names that trigger entropy
+		commonVarPatterns := []string{
+			"expe", "want", "got", "name", "type", "spec", "conf",
+			"opts", "args", "params", "meta", "data", "info",
+		}
+
+		for _, pattern := range commonVarPatterns {
+			if strings.Contains(snippet, pattern) {
+				return true
+			}
+		}
+	}
+
+	// Skip documentation and config template files
+	if strings.Contains(file, ".md") || strings.Contains(file, "readme") ||
+		strings.Contains(file, ".example") || strings.Contains(file, "template") {
+		return true
+	}
+
+	return false
+}
+
+// deduplicateFindings removes duplicate or very similar findings
+func deduplicateFindings(findings []Finding) []Finding {
+	seen := make(map[string]bool)
+	var unique []Finding
+
+	for _, f := range findings {
+		// Create a key based on rule + file + general location
+		key := fmt.Sprintf("%s:%s", f.RuleID, f.File)
+
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, f)
+		}
+	}
+
+	return unique
+}
+
+// prepareOptimizedFindingsSummary creates a concise, optimized summary for AI
+func prepareOptimizedFindingsSummary(findings []Finding) string {
+	var summary strings.Builder
+
+	// Group by severity and type
+	bySeverity := make(map[string]map[string][]Finding)
+	for _, f := range findings {
+		if bySeverity[f.Severity] == nil {
+			bySeverity[f.Severity] = make(map[string][]Finding)
+		}
+		bySeverity[f.Severity][f.RuleID] = append(bySeverity[f.Severity][f.RuleID], f)
+	}
+
+	// Output in priority order with compact format
+	for _, severity := range []string{"CRITICAL", "HIGH", "MEDIUM", "LOW"} {
+		if ruleFindings, ok := bySeverity[severity]; ok && len(ruleFindings) > 0 {
+			summary.WriteString(fmt.Sprintf("\n%s SEVERITY:\n", severity))
+
+			for ruleID, ruleFindings := range ruleFindings {
+				fileList := make(map[string]int)
+				for _, f := range ruleFindings {
+					fileList[f.File]++
+				}
+
+				// Compact representation
+				var files []string
+				for file, count := range fileList {
+					if count > 1 {
+						files = append(files, fmt.Sprintf("%s(x%d)", shortenPath(file), count))
+					} else {
+						files = append(files, shortenPath(file))
+					}
+				}
+
+				summary.WriteString(fmt.Sprintf("  %s [%s]: %s\n",
+					ruleID, ruleFindings[0].Title, strings.Join(files, ", ")))
+			}
+		}
+	}
+
+	return summary.String()
+}
+
+// shortenPath shortens file paths for compact display
+func shortenPath(path string) string {
+	parts := strings.Split(path, "/")
+	if len(parts) > 3 {
+		return ".../" + strings.Join(parts[len(parts)-2:], "/")
+	}
+	return path
+}
+
+// estimateTokenCount estimates the number of tokens in text (rough approximation)
+func estimateTokenCount(text string) int {
+	// Rough estimate: 1 token ≈ 4 characters
+	return len(text) / 4
+}
+
+// reduceFindingsForContext reduces findings to fit within context constraints
+func reduceFindingsForContext(findings []Finding, maxTokens int) []Finding {
+	if len(findings) == 0 {
+		return findings
+	}
+
+	// Start with highest priority findings and add until we approach limit
+	var reduced []Finding
+	currentSize := 0
+
+	// Reserve tokens for prompt structure
+	reservedTokens := 1000
+	availableTokens := maxTokens - reservedTokens
+
+	for _, f := range findings {
+		// Estimate tokens for this finding
+		findingText := fmt.Sprintf("%s %s %s", f.RuleID, f.Title, f.File)
+		findingTokens := estimateTokenCount(findingText)
+
+		if currentSize+findingTokens > availableTokens {
+			break
+		}
+
+		reduced = append(reduced, f)
+		currentSize += findingTokens
+	}
+
+	return reduced
 }
