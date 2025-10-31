@@ -79,6 +79,7 @@ func scanGoFile(filePath string) ([]LeakFinding, error) {
 	// AST-based detection (more accurate)
 	findings = append(findings, detectGoroutineLeaks(fset, node, filePath, contentStr)...)
 	findings = append(findings, detectResourceLeaks(fset, node, filePath, contentStr)...)
+	findings = append(findings, detectUnusedWatchers(fset, node, filePath, contentStr)...)
 	findings = append(findings, detectMemoryLeaks(fset, node, filePath, contentStr)...)
 	findings = append(findings, detectCPUIssues(fset, node, filePath, contentStr)...)
 
@@ -248,6 +249,278 @@ func detectResourceLeaks(fset *token.FileSet, node *ast.File, filePath, content 
 	}
 
 	return findings
+}
+
+// detectUnusedWatchers finds watchers/observers monitoring unused or out-of-scope objects
+func detectUnusedWatchers(fset *token.FileSet, node *ast.File, filePath, content string) []LeakFinding {
+	var findings []LeakFinding
+
+	// Track all watchers and what they're watching
+	type WatcherInfo struct {
+		watcherVar  string // Name of the watcher variable
+		watchedPath string // Path/object being watched (from .Add() call)
+		watcherLine int    // Line where watcher was created
+		addLine     int    // Line where .Add() was called
+	}
+	
+	watchers := []WatcherInfo{}
+
+	// First pass: Find all watchers and their .Add() calls
+	ast.Inspect(node, func(n ast.Node) bool {
+		if n == nil {
+			return false
+		}
+		
+		// Look for watcher creation
+		if assign, ok := n.(*ast.AssignStmt); ok {
+			for i, expr := range assign.Rhs {
+				if call, ok := expr.(*ast.CallExpr); ok {
+					if isWatcherCall(call) {
+						pos := fset.Position(call.Pos())
+						
+						// Get watcher variable name
+						var watcherVar string
+						if i < len(assign.Lhs) {
+							if ident, ok := assign.Lhs[i].(*ast.Ident); ok {
+								watcherVar = ident.Name
+							}
+						}
+						
+						if watcherVar != "" {
+							// Store watcher info (will find watched paths in next step)
+							watchers = append(watchers, WatcherInfo{
+								watcherVar:  watcherVar,
+								watcherLine: pos.Line,
+							})
+						}
+					}
+				}
+			}
+		}
+		
+		return true
+	})
+
+	// Second pass: Find .Add() or .Watch() calls and extract watched paths
+	for i := range watchers {
+		watcher := &watchers[i]
+		
+		ast.Inspect(node, func(n ast.Node) bool {
+			if n == nil {
+				return false
+			}
+			
+			// Look for watcher.Add("path") or watcher.Watch("path")
+			if exprStmt, ok := n.(*ast.ExprStmt); ok {
+				if call, ok := exprStmt.X.(*ast.CallExpr); ok {
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+						if x, ok := sel.X.(*ast.Ident); ok {
+							// Check if this is our watcher calling Add/Watch
+							if x.Name == watcher.watcherVar && 
+							   (sel.Sel.Name == "Add" || sel.Sel.Name == "Watch" || sel.Sel.Name == "AddWatch") {
+								
+								pos := fset.Position(call.Pos())
+								watcher.addLine = pos.Line
+								
+								// Extract the path argument
+								if len(call.Args) > 0 {
+									// Try to get string literal
+									if lit, ok := call.Args[0].(*ast.BasicLit); ok {
+										watcher.watchedPath = lit.Value
+									} else if ident, ok := call.Args[0].(*ast.Ident); ok {
+										// It's a variable - store variable name
+										watcher.watchedPath = ident.Name
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			// Also check for assignment form: err = watcher.Add(path)
+			if assign, ok := n.(*ast.AssignStmt); ok {
+				for _, expr := range assign.Rhs {
+					if call, ok := expr.(*ast.CallExpr); ok {
+						if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+							if x, ok := sel.X.(*ast.Ident); ok {
+								if x.Name == watcher.watcherVar && 
+								   (sel.Sel.Name == "Add" || sel.Sel.Name == "Watch") {
+									
+									pos := fset.Position(call.Pos())
+									watcher.addLine = pos.Line
+									
+									if len(call.Args) > 0 {
+										if lit, ok := call.Args[0].(*ast.BasicLit); ok {
+											watcher.watchedPath = lit.Value
+										} else if ident, ok := call.Args[0].(*ast.Ident); ok {
+											watcher.watchedPath = ident.Name
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			return true
+		})
+	}
+
+	// Third pass: Check for each watcher if events are consumed AND if watched path is used
+	for _, watcher := range watchers {
+		watcherEventsConsumed := false
+		watchedPathUsed := false
+		
+		ast.Inspect(node, func(n ast.Node) bool {
+			if n == nil {
+				return false
+			}
+			
+			pos := fset.Position(n.Pos())
+			
+			// Skip anything before the watcher.Add() call
+			if watcher.addLine > 0 && pos.Line <= watcher.addLine {
+				return true
+			}
+			
+			// Check if watcher.Events channel is being read (range over watcher.Events)
+			if rangeStmt, ok := n.(*ast.RangeStmt); ok {
+				if sel, ok := rangeStmt.X.(*ast.SelectorExpr); ok {
+					if x, ok := sel.X.(*ast.Ident); ok {
+						if x.Name == watcher.watcherVar && sel.Sel.Name == "Events" {
+							watcherEventsConsumed = true
+						}
+					}
+				}
+			}
+			
+			// Also check for select statements reading from watcher.Events
+			if selectStmt, ok := n.(*ast.SelectStmt); ok {
+				// Traverse select statement body to check for channel receives
+				for _, stmt := range selectStmt.Body.List {
+					if commClause, ok := stmt.(*ast.CommClause); ok {
+						if commClause.Comm != nil {
+							// Check for assignment from channel receive
+							if assign, ok := commClause.Comm.(*ast.AssignStmt); ok {
+								for _, rhs := range assign.Rhs {
+									if unary, ok := rhs.(*ast.UnaryExpr); ok && unary.Op.String() == "<-" {
+										if sel, ok := unary.X.(*ast.SelectorExpr); ok {
+											if x, ok := sel.X.(*ast.Ident); ok {
+												if x.Name == watcher.watcherVar && sel.Sel.Name == "Events" {
+													watcherEventsConsumed = true
+												}
+											}
+										}
+									}
+								}
+							}
+							// Check for receive statement (non-assignment)
+							if exprStmt, ok := commClause.Comm.(*ast.ExprStmt); ok {
+								if unary, ok := exprStmt.X.(*ast.UnaryExpr); ok && unary.Op.String() == "<-" {
+									if sel, ok := unary.X.(*ast.SelectorExpr); ok {
+										if x, ok := sel.X.(*ast.Ident); ok {
+											if x.Name == watcher.watcherVar && sel.Sel.Name == "Events" {
+												watcherEventsConsumed = true
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			// Check if watched path/variable is actually used after watcher.Add()
+			if watcher.watchedPath != "" {
+				// Remove quotes from string literals
+				watchedPathClean := strings.Trim(watcher.watchedPath, "\"'`")
+				
+				// Check if it's used in meaningful operations (not just in log statements)
+				if ident, ok := n.(*ast.Ident); ok {
+					if ident.Name == watcher.watchedPath || ident.Name == watchedPathClean {
+						// Check if this usage is meaningful by examining parent context
+						// Skip if it's just in a log/print statement or string formatting
+						
+						// For now, mark as used - we'll refine this later
+						// TODO: Distinguish between meaningful usage (file ops, comparisons)
+						// vs trivial usage (just logging the variable name)
+						watchedPathUsed = true
+					}
+				}
+				
+				// Check for string literals containing the path
+				if lit, ok := n.(*ast.BasicLit); ok {
+					if strings.Contains(lit.Value, watchedPathClean) && pos.Line > watcher.addLine {
+						watchedPathUsed = true
+					}
+				}
+			}
+			
+			return true
+		})
+
+		// Issue 1: If watcher events are not consumed, it's a CRITICAL leak
+		if !watcherEventsConsumed {
+			snippet := extractLine(content, watcher.watcherLine)
+			findings = append(findings, LeakFinding{
+				Type:        "resource",
+				Category:    "watcher_events_not_consumed",
+				File:        filePath,
+				Line:        watcher.watcherLine,
+				Severity:    "CRITICAL",
+				Description: fmt.Sprintf("Watcher '%s' created but Events channel never consumed - memory leak as events queue up", 
+					watcher.watcherVar),
+				CodeSnippet: snippet,
+				Fix:         fmt.Sprintf("Add event loop: for event := range %s.Events { /* handle */ } or select { case e := <-%s.Events: ... }", 
+					watcher.watcherVar, watcher.watcherVar),
+			})
+		}
+		
+		// Issue 2: If watched path is never used after being watched, it's wasteful
+		if watcher.watchedPath != "" && !watchedPathUsed && watcher.addLine > 0 {
+			snippet := extractLine(content, watcher.addLine)
+			findings = append(findings, LeakFinding{
+				Type:        "resource",
+				Category:    "watcher_monitoring_unused_path",
+				File:        filePath,
+				Line:        watcher.addLine,
+				Severity:    "HIGH",
+				Description: fmt.Sprintf("Watcher '%s' monitoring path '%s' but path never used - wasted resources", 
+					watcher.watcherVar, watcher.watchedPath),
+				CodeSnippet: snippet,
+				Fix:         fmt.Sprintf("Either use the watched path '%s' in your code, or remove the watcher.Add() call", 
+					watcher.watchedPath),
+			})
+		}
+	}
+
+	return findings
+}
+
+// isWatcherCall checks if a call expression creates a watcher/observer
+func isWatcherCall(call *ast.CallExpr) bool {
+	if sel, ok := call.Fun.(*ast.SelectorExpr); ok {
+		watcherFuncs := []string{
+			"NewWatcher",           // fsnotify
+			"Watch",                // various libraries
+			"AddWatch",             // inotify
+			"Observe",              // observer pattern
+			"Subscribe",            // pub/sub patterns
+			"AddEventListener",     // event systems
+			"AddObserver",          // observer pattern
+			"OnChange",             // change detection
+		}
+		
+		for _, fn := range watcherFuncs {
+			if sel.Sel.Name == fn {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // detectMemoryLeaks finds unbounded memory growth
