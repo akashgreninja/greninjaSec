@@ -61,6 +61,10 @@ func GenerateHTMLReportV2(result ScanResult, outputPath string) error {
 				return len(v)
 			case []AttackChain:
 				return len(v)
+			case []ShadowAttackPath:
+				return len(v)
+			case []ShadowRecommendation:
+				return len(v)
 			default:
 				return 0
 			}

