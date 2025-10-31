@@ -52,6 +52,15 @@ greninjasec --manifest --secrets --path examples/
 # Scan for CVE vulnerabilities and CVSS scores
 greninjasec --vulnerabilities --path .
 
+# 🆕 AI-powered remediation suggestions (requires OpenWebUI/GPT-4)
+greninjasec --all --ai-remediation --path .
+
+# 🆕 Deep Git history secret scanning (scans ALL commits)
+greninjasec --deep-scan --path .
+
+# 🆕 Memory/resource leak detection (Go codebases)
+greninjasec --leaks --path .
+
 # Output as JSON (for CI/CD)
 greninjasec --all --format json --path .
 
@@ -106,13 +115,16 @@ git commit --no-verify -m "commit message"
 - ✅ **Dockerfile security scanning** via Hadolint (50+ checks)
 - ✅ **Terraform security scanning** via Tfsec (100+ checks)
 - ✅ **CVE/Vulnerability scanning** via Trivy with CVSS scores (scans dependencies + container images)
+- ✅ **🆕 Deep Git History Scanning** — Finds secrets leaked in ALL commits with exposure timeline
+- ✅ **🆕 Memory/Resource Leak Detection** — AST-based detection for Go codebases (15+ resource types)
 - ✅ **Auto-download tool management** (no manual installation required)
 
 **Advanced Features:**
 - ✅ **Attack Chain Analyzer** — Correlates findings into exploit paths (8 pre-defined templates)
-- ✅ **AI-Enhanced Analysis** — Optional OpenWebUI integration for advanced threat detection
+- ✅ **🆕 AI-Powered Remediation** — OpenWebUI/GPT-4 integration for smart fix suggestions with confidence scores
 - ✅ **Smart Output Formatting** — Concise mode (top 3 per severity) or verbose mode (all details)
 - ✅ **Priority Recommendations** — Actionable summary with top risks
+- ✅ **🆕 Interactive HTML Reports** — Expandable AI fix sections with code patches, commands, and testing steps
 
 ✅ **Severity levels:** CRITICAL / HIGH / MEDIUM / LOW
 
@@ -162,17 +174,25 @@ greninjasec/
 │   └── root.go          # CLI entry point (Cobra)
 ├── internal/
 │   ├── scanner/
-│   │   ├── scanner.go   # Core scanning logic + Kubesec integration
-│   │   ├── secrets.go   # Secrets detection engine
-│   │   ├── dockerfile.go # Dockerfile scanner (Hadolint)
-│   │   └── tools.go     # Auto-download manager
+│   │   ├── scanner.go          # Core scanning logic + Kubesec integration
+│   │   ├── secrets.go          # Secrets detection engine
+│   │   ├── dockerfile.go       # Dockerfile scanner (Hadolint)
+│   │   ├── git_history.go      # 🆕 Deep Git history secret scanner
+│   │   ├── leaks.go            # 🆕 Memory/resource leak detector (AST-based)
+│   │   ├── ai_enrichment.go    # 🆕 AI remediation integration
+│   │   └── tools.go            # Auto-download manager
+│   ├── ai/
+│   │   ├── client.go           # 🆕 OpenWebUI API client
+│   │   ├── config.go           # 🆕 AI configuration
+│   │   └── types.go            # 🆕 AI request/response types
 │   └── rules/
 │       ├── default_rules.yaml  # Custom rule definitions
-│       └── rules.go     # Rule loading (in progress)
+│       └── rules.go            # Rule loading
 ├── examples/
-│   ├── bad_deployment.yaml  # Test YAML with vulnerabilities
-│   ├── bad_dockerfile       # Test Dockerfile
-│   └── config.txt           # Test secrets file
+│   ├── bad_deployment.yaml     # Test YAML with vulnerabilities
+│   ├── bad_dockerfile          # Test Dockerfile
+│   ├── sample_leaks.go         # 🆕 Example leaks for testing
+│   └── config.txt              # Test secrets file
 └── main.go
 ```
 
@@ -182,40 +202,66 @@ greninjasec/
 
 ### 🔨 Core Engine Enhancements
 - 🔄 Dynamic rule loading from `default_rules.yaml`
-- 🔄 Support for Helm charts, Terraform, Dockerfiles
+- 🔄 Support for Helm charts
 - 🔄 Regex/JSONPath pattern matching for custom rules
-- 🔄 Colorized CLI output
-- 🔄 Hardcoded credential detection
 - 🔄 RBAC/IAM over-privileged role detection
 
+### 🆕 **Recently Completed**
+- ✅ **AI-Powered Smart Remediation** — GPT-4 integration via OpenWebUI with:
+  - Detailed fix explanations and risk analysis
+  - Code patches with line-by-line changes
+  - Shell commands for quick fixes
+  - Testing steps and verification methods
+  - Confidence scoring (0-100%)
+  - Response caching to avoid redundant API calls
+- ✅ **Deep Git History Secret Scanning** — Detects secrets in ALL commits with:
+  - Commit hash, author, and timestamp tracking
+  - Days exposed calculation
+  - Detection if secret still exists in current repo
+  - Git cleanup command generation (git-filter-branch + BFG)
+- ✅ **Memory/Resource Leak Detection** (Go codebases) — AST-based analysis for:
+  - Unclosed files, HTTP responses, DB connections
+  - File watchers (fsnotify) never closed
+  - Timers (time.NewTicker) never stopped
+  - Contexts never cancelled
+  - Event listeners never removed
+  - Message queue subscriptions never unsubscribed
+  - Goroutines without cancellation
+  - Unbounded slice growth
+  - CPU issues (infinite loops, regex in loops)
+  - Custom fix suggestions per resource type
+
 ### 🧨 Red-Team Simulation
-- 📅 Attack Chain Analyzer
-  - Correlate findings to map exploit paths
-  - Example: leaked CI key → public ECR → privileged SA → cluster compromise
+- ✅ Attack Chain Analyzer (8 pre-defined templates)
 - 📅 Exploit Path Simulation (non-destructive)
-  - Simulate what an attacker could do
-  - Returns: LIKELY / POSSIBLE / UNLIKELY exploitability
 - 📅 Exploit Surface Score calculation
 - 📅 Step-by-step attack narrative generation
 
 ### 🔗 DevSecOps Integration
-- 📅 Pre-commit hook to block critical findings
+- ✅ Pre-commit hook to block critical findings
+- ✅ HTML report with visual attack graphs
 - 📅 GitHub Action for PR scanning + inline comments
 - 📅 Slack/email notifications
-- 📅 HTML report with visual attack graphs (D3.js)
 
 ### 💾 Storage & Caching
 - 📅 BoltDB/SQLite for result caching
 - 📅 Trend tracking and versioned logs
 - 📅 False-positive management
 
-### 🤖 AI Integration (via OpenWebUI)
-- 📅 AI-generated fix suggestions
+### 🤖 AI Integration Enhancements
+- ✅ AI-generated fix suggestions
+- ✅ Risk prioritization and triage
 - 📅 Exploit chain narration (convert findings → human-readable stories)
-- 📅 Risk prioritization and triage
 - 📅 False positive classification
 - 📅 Auto-generate PR comments
 - 📅 Rule authoring assistant
+
+### 🔐 Security Validation
+- 📅 **Secret Validation** — Check if leaked credentials are still active:
+  - AWS keys → Test against AWS STS API
+  - GitHub tokens → Test against GitHub API
+  - Google API keys → Test against Google APIs
+  - Mark as CRITICAL if active, LOW if revoked
 
 ### 📋 Compliance Mapping
 - 📅 Tag findings to compliance frameworks:
@@ -285,34 +331,49 @@ Edit `internal/rules/default_rules.yaml` to add custom rules:
 ./greninjasec --secrets --path examples/
 ./greninjasec --dockerfile --path examples/
 ./greninjasec --manifest --path examples/
+./greninjasec --vulnerabilities --path .
+
+# 🆕 Test AI remediation (requires .env with OpenWebUI credentials)
+./greninjasec --all --ai-remediation --path examples/
+
+# 🆕 Test deep Git history scanning
+./greninjasec --deep-scan --path .
+
+# 🆕 Test leak detection on sample file
+./greninjasec --leaks --path examples/sample_leaks.go
 ```
 
 ---
 
 ## 📈 **Project Progress**
 
-**MVP Completion: ~30%**
+**MVP Completion: ~65%**
 
 | Feature Category | Status | Completion |
 |-----------------|--------|-----------|
-| Core Scanner | ✅ Working | 80% |
+| Core Scanner | ✅ Working | 90% |
 | Kubesec Integration | ✅ Working | 100% |
+| CVE/Vulnerability Scanning | ✅ Working | 100% |
+| Deep Git History Scanning | ✅ Working | 100% |
+| Memory/Resource Leak Detection | ✅ Working | 100% |
+| AI-Powered Remediation | ✅ Working | 100% |
 | Custom Rules | 🔄 In Progress | 30% |
-| Multi-format Output | ✅ Working | 60% |
-| Red-Team Simulation | 📅 Planned | 0% |
-| Attack Chain Analysis | 📅 Planned | 0% |
+| Multi-format Output | ✅ Working | 80% |
+| HTML Reports | ✅ Working | 90% |
+| Pre-commit Hooks | ✅ Working | 100% |
+| Attack Chain Analysis | ✅ Working | 70% |
 | CI/CD Integration | 📅 Planned | 0% |
-| AI Integration | 📅 Planned | 0% |
+| Secret Validation (Live Check) | 📅 Planned | 0% |
 | Compliance Mapping | 📅 Planned | 0% |
 
 ---
 
 ## 🎯 **Next Steps**
 
-1. **Dynamic rule loading** — Load and execute rules from YAML
-2. **Terraform/Dockerfile support** — Expand scanner to more IaC types
-3. **Attack chain correlation** — Link findings to create exploit paths
-4. **GitHub Action** — Enable automated PR scanning
+1. **Secret Validation** — Check if leaked AWS keys/GitHub tokens are still active
+2. **TUI Dashboard** — Interactive terminal UI with Bubble Tea
+3. **GitHub Action** — Enable automated PR scanning
+4. **Security Score Tracking** — Trend analysis across commits
 
 ---
 

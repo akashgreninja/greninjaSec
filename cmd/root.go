@@ -26,6 +26,7 @@ var (
 	aiEnhance           bool
 	aiRemediation       bool
 	deepScan            bool
+	scanLeaks           bool
 	verbose             bool
 	Version             = "dev" // Set via ldflags during build
 	rootCmd        = &cobra.Command{
@@ -185,6 +186,32 @@ Examples:
 				}
 			}
 
+			// Scan for memory/resource leaks if requested
+			if scanLeaks {
+				fmt.Fprintf(os.Stderr, "🔍 Scanning for memory/resource leaks...\n")
+				leaks, err := scanner.ScanForLeaks(targetPath)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "⚠️  Leak scan failed: %v\n", err)
+				} else if len(leaks) > 0 {
+					fmt.Fprintf(os.Stderr, "✅ Found %d potential leaks\n\n", len(leaks))
+
+					// Convert LeakFindings to regular Findings
+					for _, leak := range leaks {
+						message := fmt.Sprintf("%s | Fix: %s", leak.Description, leak.Fix)
+
+						finding := scanner.Finding{
+							ID:       "LEAK_" + strings.ToUpper(leak.Category),
+							Title:    fmt.Sprintf("[%s] %s", strings.ToUpper(leak.Type), leak.Category),
+							Severity: leak.Severity,
+							Message:  message,
+							File:     leak.File,
+							Snippet:  fmt.Sprintf("[Line %d] %s", leak.Line, leak.CodeSnippet),
+						}
+						findings = append(findings, finding)
+					}
+				}
+			}
+
 			// Enrich findings with AI remediation if requested
 			if opts.AIRemediation {
 				findings, err = s.EnrichFindingsWithAI(findings)
@@ -335,6 +362,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&aiEnhance, "ai-enhance", "", false, "Use AI to discover additional attack chains (requires .env with OPENWEBUI_URL and OPENWEBUI_TOKEN)")
 	rootCmd.Flags().BoolVarP(&aiRemediation, "ai-remediation", "", false, "Get AI-powered fix suggestions for CRITICAL/HIGH findings (requires .env)")
 	rootCmd.Flags().BoolVarP(&deepScan, "deep-scan", "", false, "Scan entire Git history for exposed secrets (not just current files)")
+	rootCmd.Flags().BoolVarP(&scanLeaks, "leaks", "", false, "Scan for memory/resource leaks and CPU issues (Go files only)")
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Show detailed output for all findings (default: summary only)")
 }
 
