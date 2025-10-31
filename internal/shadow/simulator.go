@@ -132,9 +132,13 @@ func (s *Simulator) Run(targetPath string, targetType string, vulnerabilities []
 
 	// Generate report if configured
 	if s.config.GenerateReport {
-		reportPath := s.generateReport(result)
-		result.ReportPath = reportPath
-		fmt.Printf("\n📄 Full report: %s\n", reportPath)
+		reportPath := "greninjasec-shadow-report.html"
+		if err := GenerateHTMLReport(result, reportPath); err != nil {
+			fmt.Printf("⚠️  Failed to generate HTML report: %v\n", err)
+		} else {
+			result.ReportPath = reportPath
+			fmt.Printf("\n📄 Full report: %s\n", reportPath)
+		}
 	}
 
 	return result, nil
@@ -395,21 +399,100 @@ func (s *Simulator) determineImpact(path AttackPath) ImpactLevel {
 }
 
 func (s *Simulator) generateRecommendations(sim ShadowSimulation) []Recommendation {
-	// TODO: Generate smart recommendations based on attack paths
-	return []Recommendation{
-		{
-			Priority:    1,
-			Title:       "Remove privileged containers",
-			Description: "Containers with privileged: true can escape to host",
-			Fix:         "Set securityContext.privileged: false",
-			Impact:      "Prevents container escape attacks",
-		},
+	// Generate smart recommendations based on attack paths
+	recs := []Recommendation{}
+	
+	// Track what we've recommended to avoid duplicates
+	recommended := make(map[string]bool)
+	
+	for _, path := range sim.AttackPaths {
+		if !path.Success {
+			continue
+		}
+		
+		// Generate recommendations based on attack vector
+		var rec Recommendation
+		
+		switch path.Vector {
+		case VectorContainerEscape:
+			if !recommended["privileged"] {
+				rec = Recommendation{
+					Priority:    1,
+					Title:       "Remove privileged containers",
+					Description: "Containers with privileged: true can escape to host using nsenter or similar techniques",
+					Fix:         "Set securityContext.privileged: false and use specific capabilities instead",
+					Impact:      "Prevents container escape attacks that could compromise the entire host",
+				}
+				recs = append(recs, rec)
+				recommended["privileged"] = true
+			}
+			
+		case VectorDockerSocketAbuse:
+			if !recommended["docker-socket"] {
+				rec = Recommendation{
+					Priority:    1,
+					Title:       "Remove Docker socket mounts",
+					Description: "Mounted /var/run/docker.sock allows spawning privileged containers on host",
+					Fix:         "Remove hostPath volume mount for /var/run/docker.sock",
+					Impact:      "Blocks Docker socket abuse leading to full host compromise",
+				}
+				recs = append(recs, rec)
+				recommended["docker-socket"] = true
+			}
+			
+		case VectorHostPathEscape:
+			if !recommended["hostpath"] {
+				rec = Recommendation{
+					Priority:    2,
+					Title:       "Restrict hostPath mounts",
+					Description: "HostPath volumes provide access to host filesystem",
+					Fix:         "Use PersistentVolumes instead of hostPath, or restrict with readOnly: true",
+					Impact:      "Limits filesystem access and prevents sensitive file exfiltration",
+				}
+				recs = append(recs, rec)
+				recommended["hostpath"] = true
+			}
+			
+		case VectorCredentialTheft, VectorCloudTakeover:
+			if !recommended["credentials"] {
+				rec = Recommendation{
+					Priority:    1,
+					Title:       "Rotate exposed credentials immediately",
+					Description: "Hardcoded AWS/cloud credentials detected in configuration",
+					Fix:         "Use Kubernetes secrets + IAM roles for service accounts (IRSA for AWS)",
+					Impact:      "Prevents cloud account takeover and data exfiltration",
+				}
+				recs = append(recs, rec)
+				recommended["credentials"] = true
+			}
+			
+		case VectorLateralMovement, VectorPrivilegeEscalation:
+			if !recommended["rbac"] {
+				rec = Recommendation{
+					Priority:    2,
+					Title:       "Implement least-privilege RBAC",
+					Description: "Overly permissive service accounts allow cluster-wide access",
+					Fix:         "Create specific RoleBindings instead of ClusterRoleBindings, limit permissions",
+					Impact:      "Restricts lateral movement and privilege escalation within cluster",
+				}
+				recs = append(recs, rec)
+				recommended["rbac"] = true
+			}
+		}
 	}
-}
-
-func (s *Simulator) generateReport(result *SimulationResult) string {
-	// TODO: Generate HTML/PDF report
-	return "greninjasec-shadow-report.html"
+	
+	// Add general security best practices if we have successful attacks
+	if len(sim.AttackPaths) > 0 {
+		recs = append(recs, Recommendation{
+			Priority:    3,
+			Title:       "Implement Pod Security Standards",
+			Description: "Enable Pod Security Admission to enforce baseline security policies",
+			Fix:         "Add pod-security.kubernetes.io/enforce: restricted label to namespaces",
+			Impact:      "Provides defense-in-depth by blocking dangerous configurations",
+		})
+	}
+	
+	return recs
 }
 
 func (s *Simulator) printSummary(sim ShadowSimulation) {
